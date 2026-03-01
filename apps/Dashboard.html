@@ -1,1 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Hub | Minimal</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+    <style>
+        :root {
+            --glass: rgba(10, 10, 15, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #6366f1;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.4);
+            --bg-gradient: radial-gradient(circle at 0% 0%, #1e1b4b 0%, transparent 45%),
+                           radial-gradient(circle at 100% 100%, #312e81 0%, transparent 45%),
+                           radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #020617;
+            color: var(--text-primary);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        /* Animated Mesh Background */
+        .bg-layer {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            background: var(--bg-gradient);
+            background-size: cover;
+            background-position: center;
+            animation: meshMove 30s ease infinite alternate;
+            transition: background 0.8s ease;
+        }
+
+        @keyframes meshMove {
+            0% { transform: scale(1) rotate(0deg); }
+            100% { transform: scale(1.1) rotate(2deg); filter: hue-rotate(15deg); }
+        }
+
+        #bg-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            backdrop-filter: blur(60px);
+            -webkit-backdrop-filter: blur(60px);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+            transition: background 0.3s ease, border 0.3s ease;
+        }
+
+        .link-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            color: var(--text-primary);
+            text-decoration: none;
+            width: 100%;
+        }
+
+        .link-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-3px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 25px -10px var(--accent);
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -6px; right: -6px;
+            width: 24px; height: 24px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 10;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+        }
+        .delete-btn:hover { transform: scale(1.1); }
+        .group:hover .delete-btn { opacity: 1; }
+
+        .cat-tag {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cat-tag::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent); }
+
+        /* Site Icon Styling */
+        .site-img {
+            width: 34px; height: 34px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.05);
+        }
+        
+        /* Floating Dock */
+        .floating-dock {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            padding: 12px 20px;
+            border-radius: 100px;
+            z-index: 50;
+        }
+        .dock-btn {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .dock-btn:hover {
+            background: var(--accent);
+            transform: translateY(-5px) scale(1.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 20px -5px var(--accent);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-container {
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        /* Calculator Specific */
+        .calc-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            aspect-ratio: 1/1;
+            border-radius: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.15s ease;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        .calc-btn:hover { background: rgba(255, 255, 255, 0.15); transform: scale(0.95); }
+        .calc-btn.op { color: var(--accent); font-weight: 700; background: rgba(255, 255, 255, 0.02); }
+        .calc-btn.eq { background: var(--accent); color: white; border: none; }
+        .calc-btn.eq:hover { filter: brightness(1.2); }
+
+        /* Theme Presets */
+        .theme-preset-card {
+            height: 100px;
+            border-radius: 16px;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .theme-preset-card:hover { transform: scale(1.03); }
+        .theme-preset-card.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body class="p-6 md:p-12 pb-32">
+
+    <!-- Backgrounds -->
+    <div class="bg-layer" id="main-bg"></div>
+    <div id="bg-overlay"></div>
+
+    <main class="max-w-[1400px] mx-auto flex flex-col items-center gap-12">
+        
+        <!-- Clock Widget -->
+        <div class="glass-panel p-10 text-center w-full max-w-md mt-4">
+            <div id="clock" class="text-7xl font-extrabold tracking-tighter mb-2 flex items-center justify-center">00:00</div>
+            <div id="date" class="text-white/40 font-semibold uppercase tracking-widest text-xs">Loading Date...</div>
+        </div>
+
+        <!-- Dynamic Links Grid -->
+        <div id="links-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
+            <!-- Populated by JavaScript -->
+        </div>
+
+    </main>
+
+    <!-- Floating Dock for Tools -->
+    <div class="floating-dock glass-panel">
+        <button class="dock-btn" onclick="toggleModal('add-link-modal')" title="Add New Link">
+            <i class="ph-fill ph-plus text-2xl"></i>
+        </button>
+        <button class="dock-btn" onclick="toggleModal('calc-modal')" title="Calculator">
+            <i class="ph-fill ph-calculator text-2xl"></i>
+        </button>
+        <button class="dock-btn" onclick="toggleModal('theme-modal')" title="Theme Changer">
+            <i class="ph-fill ph-palette text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- Add Link Modal -->
+    <div id="add-link-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal('add-link-modal')"></div>
+        <div class="glass-panel modal-container w-full max-w-md p-6 relative shadow-2xl transform scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg"><i class="ph-fill ph-link text-white text-xl"></i></div>
+                    <div>
+                        <span class="font-bold text-xl tracking-tight block leading-none">Add New Link</span>
+                        <span class="text-[10px] opacity-40 uppercase tracking-widest font-bold">Dynamic Categories</span>
+                    </div>
+                </div>
+                <button onclick="toggleModal('add-link-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] uppercase font-bold opacity-40 ml-1">Site Name</label>
+                    <input type="text" id="link-name" placeholder="e.g. YouTube" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 text-white transition-colors">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] uppercase font-bold opacity-40 ml-1">Website URL</label>
+                    <input type="url" id="link-url" placeholder="e.g. https://youtube.com" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 text-white transition-colors">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] uppercase font-bold opacity-40 ml-1">Icon URL (Optional)</label>
+                    <input type="text" id="link-img" placeholder="Leave empty to auto-fetch icon" class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 text-white transition-colors">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] uppercase font-bold opacity-40 ml-1">Category</label>
+                    <input type="text" list="category-list" id="link-cat" placeholder="Select existing or type a new one..." class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-emerald-500 text-white transition-colors">
+                    <datalist id="category-list"></datalist>
+                </div>
+
+                <button onclick="saveNewLink()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition-all active:scale-95 shadow-lg shadow-emerald-500/20 mt-4">Save to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Theme Modal -->
+    <div id="theme-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal('theme-modal')"></div>
+        <div class="glass-panel modal-container w-full max-w-3xl p-6 relative shadow-2xl transform scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg"><i class="ph-fill ph-palette text-white text-xl"></i></div>
+                    <div>
+                        <span class="font-bold text-xl tracking-tight block leading-none">Theme Engine</span>
+                        <span class="text-[10px] opacity-40 uppercase tracking-widest font-bold">System Personalization</span>
+                    </div>
+                </div>
+                <button onclick="toggleModal('theme-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="theme-preset-card active" data-theme="glass" onclick="applyTheme('glass')" style="background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-white">Glass Default</div>
+                </div>
+                <div class="theme-preset-card" data-theme="midnight" onclick="applyTheme('midnight')" style="background: #000814;">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-[#f1f5f9]">Midnight Dark</div>
+                </div>
+                <div class="theme-preset-card" data-theme="cyberpunk" onclick="applyTheme('cyberpunk')" style="background: linear-gradient(135deg, #2d00f7, #ff00ff);">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-[#00ffff] bg-black/40">Cyber Purple</div>
+                </div>
+                <div class="theme-preset-card" data-theme="ocean" onclick="applyTheme('ocean')" style="background: radial-gradient(circle at top, #0c4a6e 0%, #082f49 100%);">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-[#e0f2fe]">Ocean Blue</div>
+                </div>
+                <div class="theme-preset-card" data-theme="oled" onclick="applyTheme('oled')" style="background: #000000; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-white">OLED Black</div>
+                </div>
+                <div class="theme-preset-card" data-theme="forest" onclick="applyTheme('forest')" style="background: radial-gradient(circle at top right, #064e3b 0%, #022c22 100%);">
+                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-[#d1fae5]">Deep Forest</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calculator Modal -->
+    <div id="calc-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleModal('calc-modal')"></div>
+        <div class="glass-panel modal-container w-[340px] p-6 relative shadow-2xl transform scale-95">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center shadow-lg"><i class="ph-fill ph-calculator text-white"></i></div>
+                    <span class="font-bold text-lg tracking-tight">Calculator</span>
+                </div>
+                <button onclick="toggleModal('calc-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            
+            <div id="calc-display" class="w-full bg-black/40 rounded-2xl p-5 text-right text-3xl font-mono mb-6 h-20 flex items-center justify-end border border-white/10 overflow-hidden shadow-inner text-[var(--text-primary)]">0</div>
+            
+            <div class="grid grid-cols-4 gap-3">
+                <button class="calc-btn text-red-400 font-bold" onclick="calcClear()">C</button>
+                <button class="calc-btn op" onclick="calcInput('/')">÷</button>
+                <button class="calc-btn op" onclick="calcInput('*')">×</button>
+                <button class="calc-btn op" onclick="calcDelete()"><i class="ph-bold ph-backspace"></i></button>
+                
+                <button class="calc-btn" onclick="calcInput('7')">7</button>
+                <button class="calc-btn" onclick="calcInput('8')">8</button>
+                <button class="calc-btn" onclick="calcInput('9')">9</button>
+                <button class="calc-btn op" onclick="calcInput('-')">-</button>
+                
+                <button class="calc-btn" onclick="calcInput('4')">4</button>
+                <button class="calc-btn" onclick="calcInput('5')">5</button>
+                <button class="calc-btn" onclick="calcInput('6')">6</button>
+                <button class="calc-btn op" onclick="calcInput('+')">+</button>
+                
+                <button class="calc-btn" onclick="calcInput('1')">1</button>
+                <button class="calc-btn" onclick="calcInput('2')">2</button>
+                <button class="calc-btn" onclick="calcInput('3')">3</button>
+                <button class="calc-btn eq row-span-2 h-full" onclick="calcEquals()">=</button>
+                
+                <button class="calc-btn col-span-2" onclick="calcInput('0')">0</button>
+                <button class="calc-btn" onclick="calcInput('.')">.</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA KEYS ---
+        const THEME_KEY = 'systemhub_min_theme';
+        const LINKS_KEY = 'systemhub_links_v2'; // Updated key to force fresh load of full defaults
+
+        // --- DEFAULT LINKS (Fallback if localStorage is empty) ---
+        const defaultLinks = [
+            // Quick Links
+            { id: 1, name: 'Google Search', url: 'https://www.google.com/', img: 'https://www.google.com/favicon.ico', cat: 'Quick Links' },
+            { id: 2, name: 'Cobalt Tool', url: 'https://cobalt.tools/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcEQ0MSd5yLPamOTnD1EQqqiqlEvhhxgxug&s', cat: 'Quick Links' },
+            
+            // Cognitive Tools
+            { id: 3, name: 'Gemini AI', url: 'https://gemini.google.com/app', img: 'https://mir-s3-cdn-cf.behance.net/project_modules/max_1200_webp/7cf51e188450701.65b6d6991d38d.png', cat: 'Cognitive Tools' },
+            { id: 4, name: 'ChatGPT', url: 'https://chatgpt.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg', cat: 'Cognitive Tools' },
+            { id: 5, name: 'Claude AI', url: 'https://claude.ai/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTpFdyVpVeiHpaCdE4FL2M9YJZRPU-wbWgqRQ&s', cat: 'Cognitive Tools' },
+            { id: 6, name: 'Grok', url: 'https://grok.com/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOv3K6RevHQCscoWPa2BvxKTq-9ygcQ4mhRA&s', cat: 'Cognitive Tools' },
+            { id: 14, name: 'Kimi AI', url: 'https://kimi.com/', img: 'https://hdrobots.com/wp-content/uploads/2025/02/kimi-ai-logo.webp', cat: 'Cognitive Tools' },
+            { id: 15, name: 'NotebookLM', url: 'https://notebooklm.google.com/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQTvxLMLI3tO7lyTzJ7hZecBTpwU3i1wEYKA&s', cat: 'Cognitive Tools' },
+            { id: 16, name: 'Sesame AI', url: 'https://app.sesame.com/login', img: '', cat: 'Cognitive Tools' },
+
+            // Production
+            { id: 7, name: 'Sora Video', url: 'https://sora.chatgpt.com/library', img: 'https://framerusercontent.com/images/Z6kVXpB28iOTOy6eBgwuaF7CIU.png?width=460&height=460', cat: 'Production' },
+            { id: 17, name: 'Leonardo AI', url: 'https://app.leonardo.ai/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTjPkARR7pj9SaGQNBn3j-0XXfDuPlW-07vLQ&s', cat: 'Production' },
+            { id: 8, name: 'Suno AI', url: 'https://suno.com/create', img: 'https://play-lh.googleusercontent.com/5UR_1gDasYzAjJYSdx9onJ5FT68TVzxcV6O_FjTS2X_95_qHgexX__mCa_23lUIgWlU', cat: 'Production' },
+            { id: 18, name: 'Adobe Express', url: 'https://express.adobe.com/', img: 'https://play-lh.googleusercontent.com/RKt7FfLHYfXyEJkY2imqAe1BP96wjAHtm7tH_rZZmBBX2QkC_2luYj6jXlPqoRhX5HmB', cat: 'Production' },
+
+            // Connectivity
+            { id: 9, name: 'Gmail', url: 'https://mail.google.com', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSUmNZiASUdwHTjfJlXLBGc-P-TVxvf1d0lXQ&s', cat: 'Connectivity' },
+            { id: 10, name: 'WhatsApp', url: 'https://web.whatsapp.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg', cat: 'Connectivity' },
+            { id: 19, name: 'Discord', url: 'https://discord.com/channels/@me', img: 'https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHHFT949fUipzkiFOBH3fAiZZUCdYojwUyX2aTonS1aIwMrx6NUIsHfUHSLzjGJFxxsG72wAo9EWJR4yQWyJJaDaK1XdUso6cUMpI9hAdPUU_FNs11cY1X284vsHrnWtRw7oqRpN1m9YAg21d_aNKnIo-&format=source', cat: 'Connectivity' },
+            { id: 20, name: 'Instagram', url: 'https://www.instagram.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg', cat: 'Connectivity' },
+
+            // Academy
+            { id: 21, name: 'JHPS Portal', url: 'https://jhps.myclassboard.com/', img: '', cat: 'Academy' },
+            { id: 22, name: 'NextToppers', url: 'https://nexttoppers.com/', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ1jU5sigtJx83d3b4UHThkyIAY6JJiZdxMw&s', cat: 'Academy' },
+            { id: 23, name: 'Mission Jeet', url: 'https://missionjeet.in/#about', img: 'https://yt3.googleusercontent.com/eSt2fF6E239rD5Mlim_0DMX6-UM6EJh5cQSxgWQxsNwkeMEFMtJlPJp4EpFZiE6LDkz9T4diuQ=s900-c-k-c0x00ffffff-no-rj', cat: 'Academy' },
+
+            // Entertainment
+            { id: 11, name: 'YouTube', url: 'https://youtube.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/6/62/YouTube_social_white_square_%282024%29.svg', cat: 'Entertainment' },
+            { id: 12, name: 'Spotify', url: 'https://open.spotify.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg', cat: 'Entertainment' },
+            { id: 24, name: 'Manga Fire', url: 'https://mangafire.to/home', img: '', cat: 'Entertainment' },
+            { id: 25, name: 'StreamX', url: 'https://streamex.net/', img: '', cat: 'Entertainment' },
+
+            // Gaming
+            { id: 13, name: 'Steam', url: 'https://store.steampowered.com/', img: 'https://store.steampowered.com/favicon.ico', cat: 'Gaming' },
+            { id: 26, name: 'Epic Games', url: 'https://store.epicgames.com/', img: 'https://upload.wikimedia.org/wikipedia/commons/3/31/Epic_Games_logo.svg', cat: 'Gaming' },
+            { id: 27, name: 'Aternos', url: 'https://aternos.org/:en/', img: 'https://www.google.com/s2/favicons?domain=aternos.org&sz=128', cat: 'Gaming' }
+        ];
+
+        // Category Icon Mapping
+        const catIcons = {
+            'Quick Links': 'ph-magnifying-glass',
+            'Cognitive Tools': 'ph-cpu',
+            'Production': 'ph-video',
+            'Connectivity': 'ph-chat-centered-text',
+            'Academy': 'ph-book-open',
+            'Entertainment': 'ph-tv',
+            'Gaming': 'ph-game-controller'
+        };
+
+        // --- DYNAMIC LINK ENGINE ---
+        function renderLinks() {
+            const container = document.getElementById('links-container');
+            const datalist = document.getElementById('category-list');
+            const links = JSON.parse(localStorage.getItem(LINKS_KEY)) || defaultLinks;
+            
+            container.innerHTML = '';
+            datalist.innerHTML = '';
+            
+            // Group links by category
+            const grouped = links.reduce((acc, link) => {
+                if(!acc[link.cat]) acc[link.cat] = [];
+                acc[link.cat].push(link);
+                return acc;
+            }, {});
+            
+            // Render each category block
+            Object.keys(grouped).forEach(cat => {
+                datalist.innerHTML += `<option value="${cat}">`;
+                
+                const catIcon = catIcons[cat] || 'ph-folder'; // default folder icon for new custom categories
+                
+                let html = `
+                <div class="glass-panel p-6">
+                    <div class="cat-tag"><i class="ph-fill ${catIcon}"></i> ${cat}</div>
+                    <div class="space-y-3">
+                `;
+                
+                grouped[cat].forEach(link => {
+                    let domain = "unknown";
+                    try { domain = new URL(link.url).hostname; } catch(e){}
+                    
+                    // Fallback icon logic if no img provided
+                    const imgSrc = link.img || `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                    
+                    html += `
+                        <div class="relative group">
+                            <button onclick="deleteLink(${link.id})" class="delete-btn" title="Remove Link">
+                                <i class="ph-bold ph-trash"></i>
+                            </button>
+                            <a href="${link.url}" target="_blank" class="link-card">
+                                <img src="${imgSrc}" class="site-img" onerror="this.src='https://www.google.com/s2/favicons?domain=${domain}&sz=128'">
+                                <span class="text-sm font-bold truncate">${link.name}</span>
+                            </a>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function saveNewLink() {
+            const name = document.getElementById('link-name').value.trim();
+            let url = document.getElementById('link-url').value.trim();
+            const img = document.getElementById('link-img').value.trim();
+            const cat = document.getElementById('link-cat').value.trim() || 'Uncategorized';
+
+            if (!name || !url) {
+                alert("Site Name and URL are required!");
+                return;
+            }
+
+            if (!url.startsWith('http')) {
+                url = 'https://' + url;
+            }
+
+            const links = JSON.parse(localStorage.getItem(LINKS_KEY)) || defaultLinks;
+            links.push({ id: Date.now(), name, url, img, cat });
+            localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+            
+            // Clear inputs
+            document.getElementById('link-name').value = '';
+            document.getElementById('link-url').value = '';
+            document.getElementById('link-img').value = '';
+            document.getElementById('link-cat').value = '';
+            
+            toggleModal('add-link-modal');
+            renderLinks();
+        }
+
+        function deleteLink(id) {
+            let links = JSON.parse(localStorage.getItem(LINKS_KEY)) || defaultLinks;
+            links = links.filter(link => link.id !== id);
+            localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+            renderLinks();
+        }
+
+        // --- THEME ENGINE ---
+        const themes = {
+            glass: {
+                glass: 'rgba(10, 10, 15, 0.75)',
+                border: 'rgba(255, 255, 255, 0.1)',
+                text: '#ffffff',
+                text2: 'rgba(255, 255, 255, 0.4)',
+                bg: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)',
+                accent: '#6366f1'
+            },
+            midnight: {
+                glass: 'rgba(5, 5, 10, 0.9)',
+                border: 'rgba(255, 255, 255, 0.05)',
+                text: '#f1f5f9',
+                text2: 'rgba(241, 245, 249, 0.3)',
+                bg: 'linear-gradient(to bottom, #020617, #000000)',
+                accent: '#3b82f6'
+            },
+            cyberpunk: {
+                glass: 'rgba(20, 0, 40, 0.8)',
+                border: 'rgba(255, 0, 255, 0.2)',
+                text: '#e0ffff',
+                text2: 'rgba(0, 255, 255, 0.5)',
+                bg: 'linear-gradient(45deg, #0f0c29, #302b63, #24243e)',
+                accent: '#d946ef'
+            },
+            ocean: {
+                glass: 'rgba(0, 30, 60, 0.7)',
+                border: 'rgba(0, 255, 255, 0.15)',
+                text: '#e0f2fe',
+                text2: 'rgba(224, 242, 254, 0.4)',
+                bg: 'radial-gradient(circle at top, #0c4a6e 0%, #082f49 100%)',
+                accent: '#06b6d4'
+            },
+            oled: {
+                glass: 'rgba(15, 15, 15, 1)',
+                border: 'rgba(255, 255, 255, 0.1)',
+                text: '#ffffff',
+                text2: '#666666',
+                bg: '#000000',
+                accent: '#10b981'
+            },
+            forest: {
+                glass: 'rgba(2, 44, 34, 0.75)',
+                border: 'rgba(167, 243, 208, 0.15)',
+                text: '#d1fae5',
+                text2: 'rgba(209, 250, 229, 0.5)',
+                bg: 'radial-gradient(circle at top right, #064e3b 0%, #022c22 100%)',
+                accent: '#10b981'
+            }
+        };
+
+        function applyTheme(name) {
+            const theme = themes[name];
+            if (!theme) return;
+
+            const root = document.documentElement;
+            root.style.setProperty('--glass', theme.glass);
+            root.style.setProperty('--glass-border', theme.border);
+            root.style.setProperty('--text-primary', theme.text);
+            root.style.setProperty('--text-secondary', theme.text2);
+            root.style.setProperty('--bg-gradient', theme.bg);
+            root.style.setProperty('--accent', theme.accent);
+
+            localStorage.setItem(THEME_KEY, name);
+            
+            // Update active state in UI
+            document.querySelectorAll('.theme-preset-card').forEach(card => {
+                card.classList.toggle('active', card.dataset.theme === name);
+            });
+        }
+
+        // --- CLOCK SCRIPT ---
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12 || 12;
+            
+            document.getElementById('clock').innerHTML = `${hours}:${minutes}<span class="text-3xl ml-3 opacity-40 font-light">${ampm}</span>`;
+            
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('date').innerText = now.toLocaleDateString('en-US', options);
+        }
+
+        // --- MODAL SYSTEM ---
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            const container = modal.querySelector('.modal-container');
+            
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                // Trigger reflow
+                void modal.offsetWidth;
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                container.classList.remove('scale-95');
+                container.classList.add('scale-100');
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                container.classList.remove('scale-100');
+                container.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        // --- CALCULATOR LOGIC ---
+        let calcExpr = "";
+        const calcDisplay = document.getElementById('calc-display');
+        
+        function calcInput(v) { 
+            if (calcExpr === "0" && v !== ".") calcExpr = ""; 
+            // Prevent consecutive operators
+            const lastChar = calcExpr.slice(-1);
+            const isOp = ['+', '-', '*', '/'].includes(v);
+            const isLastOp = ['+', '-', '*', '/'].includes(lastChar);
+            
+            if (isOp && isLastOp) {
+                calcExpr = calcExpr.slice(0, -1) + v;
+            } else {
+                calcExpr += v; 
+            }
+            updateDisp(); 
+        }
+        
+        function calcClear() { 
+            calcExpr = "0"; 
+            updateDisp(); 
+        }
+        
+        function calcDelete() { 
+            calcExpr = calcExpr.slice(0, -1); 
+            if(calcExpr === "") calcExpr = "0";
+            updateDisp(); 
+        }
+        
+        function calcEquals() { 
+            try { 
+                // Safely evaluate math expression
+                const sanitized = calcExpr.replace(/[^-()\d/*+.]/g, '');
+                const res = new Function('return ' + sanitized)(); 
+                
+                if (!isFinite(res)) throw new Error("Math Error");
+                
+                // Format nicely
+                calcExpr = String(Math.round(res * 100000000) / 100000000); 
+                updateDisp(); 
+            } catch { 
+                calcDisplay.innerText = "Error"; 
+                calcExpr = ""; 
+            } 
+        }
+        
+        function updateDisp() { 
+            // Visual formatting: replace * and / with nicer symbols
+            let visualStr = calcExpr || "0";
+            visualStr = visualStr.replace(/\*/g, '×').replace(/\//g, '÷');
+            calcDisplay.innerText = visualStr; 
+        }
+
+        // Keyboard support for calculator
+        document.addEventListener('keydown', (e) => {
+            const calcModal = document.getElementById('calc-modal');
+            if(calcModal && !calcModal.classList.contains('hidden')) {
+                const key = e.key;
+                if (/[0-9.]/.test(key)) calcInput(key);
+                if (['+', '-', '*', '/'].test(key)) calcInput(key);
+                if (key === 'Enter' || key === '=') { e.preventDefault(); calcEquals(); }
+                if (key === 'Backspace') calcDelete();
+                if (key === 'Escape') calcClear();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // Setup Clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Load Saved Theme
+            const savedTheme = localStorage.getItem(THEME_KEY) || 'glass';
+            applyTheme(savedTheme);
+
+            // Render Dynamic Links
+            renderLinks();
+        };
+    </script>
+</body>
+</html>
