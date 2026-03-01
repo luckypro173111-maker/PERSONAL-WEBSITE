@@ -1,1819 +1,1364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Hub | AI Command Center</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-    <style>
-        :root {
-            /* Default Glass Theme Variables */
-            --glass: rgba(10, 10, 15, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent: #6366f1;
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.4);
-            --bg-gradient: radial-gradient(circle at 0% 0%, #1e1b4b 0%, transparent 45%),
-                           radial-gradient(circle at 100% 100%, #312e81 0%, transparent 45%),
-                           radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background: #020617;
-            color: var(--text-primary);
-            min-height: 100vh;
-            margin: 0;
-            overflow-x: hidden;
-            padding-bottom: 120px;
-            transition: background 0.5s ease;
-        }
-
-        /* --- TOAST NOTIFICATIONS --- */
-        #toast-container {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            pointer-events: none;
-        }
-
-        .toast {
-            background: rgba(10, 10, 15, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            padding: 14px 20px;
-            border-radius: 16px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
-            transform: translateX(120%);
-            opacity: 0;
-            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-        }
-
-        .toast.show {
-            transform: translateX(0);
-            opacity: 1;
-        }
-
-        .toast-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            font-size: 14px;
-        }
-        .toast-success .toast-icon { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .toast-error .toast-icon { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-        .toast-info .toast-icon { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
-
-        /* Animated Mesh Background */
-        .bg-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            background: var(--bg-gradient);
-            background-size: cover;
-            background-position: center;
-            animation: meshMove 30s ease infinite alternate;
-            transition: background-image 1s ease-in-out;
-        }
-
-        @keyframes meshMove {
-            0% { transform: scale(1) rotate(0deg); }
-            100% { transform: scale(1.1) rotate(2deg); filter: hue-rotate(15deg); }
-        }
-
-        #bg-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            backdrop-filter: blur(60px);
-            -webkit-backdrop-filter: blur(60px);
-            background: rgba(0, 0, 0, 0.4);
-        }
-
-        /* Glassmorphism Classes */
-        .glass-panel {
-            background: var(--glass);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-            transition: background 0.3s ease, border 0.3s ease;
-        }
-
-        .link-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 14px;
-            border-radius: 18px;
-            color: var(--text-primary);
-        }
-
-        .link-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-3px);
-            border-color: var(--accent);
-            box-shadow: 0 10px 25px -10px var(--accent);
-        }
-
-        /* Drag & Drop Styles */
-        .layout-panel.dragging {
-            opacity: 0.5;
-            transform: scale(0.95);
-        }
-
-        /* Calculator/AI Modal App */
-        .calc-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            aspect-ratio: 1/1;
-            border-radius: 14px;
-            font-family: 'JetBrains Mono', monospace;
-            transition: all 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-        }
-        .calc-btn:hover { background: rgba(255, 255, 255, 0.15); transform: scale(0.95); }
-        .calc-btn.op { color: var(--accent); font-weight: 700; }
-        .calc-btn.eq { background: var(--accent); color: white; }
-
-        .cat-tag {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .cat-tag::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent); }
-
-        /* Site Icon Styling */
-        .site-img {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            object-fit: cover;
-            flex-shrink: 0;
-            background: rgba(255,255,255,0.05);
-        }
-        .icon-box {
-            width: 34px;
-            height: 34px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        /* Modal Overlays */
-        .modal-overlay {
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-        /* AI Studio Specifics */
-        .ai-chat-bubble {
-            max-width: 85%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            margin-bottom: 8px;
-            word-wrap: break-word;
-        }
-        .ai-chat-bubble p { margin: 0; }
-        .ai-chat-bubble ul { padding-left: 20px; margin: 5px 0; }
-        .ai-chat-bubble code { background: rgba(0,0,0,0.2); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.85em; }
-        
-        .ai-bubble-user { background: var(--accent); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
-        .ai-bubble-bot { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); align-self: flex-start; border-bottom-left-radius: 4px; }
-
-        .spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Dock Styling */
-        .bottom-dock {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translate(-50%, calc(100% + 40px));
-            display: flex;
-            gap: 12px;
-            padding: 10px;
-            z-index: 100;
-            border-radius: 30px;
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .bottom-dock::after {
-            content: '';
-            position: absolute;
-            top: -60px; /* Extends invisible hit area above the hidden dock */
-            left: -20px;
-            right: -20px;
-            bottom: -40px;
-            z-index: -1;
-        }
-
-        .bottom-dock:hover {
-            transform: translate(-50%, 0);
-        }
-
-        .dock-item {
-            width: 48px;
-            height: 48px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-        }
-        .dock-item:hover {
-            transform: translateY(-10px) scale(1.1);
-            background: var(--accent);
-            border-color: rgba(255,255,255,0.3);
-            color: white;
-        }
-
-        .search-bar-container {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .accent-dot {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 2px solid transparent;
-        }
-        .accent-dot:hover { transform: scale(1.2); }
-        .accent-dot.active { border-color: white; }
-
-        .search-results-overlay {
-            position: absolute;
-            top: 60px;
-            width: 100%;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 101;
-        }
-
-        /* Widgets area */
-        .widget-item {
-            margin-bottom: 1rem;
-        }
-
-        /* Theme Presets Styling */
-        .theme-preset-card {
-            height: 120px;
-            border-radius: 20px;
-            cursor: pointer;
-            overflow: hidden;
-            position: relative;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        .theme-preset-card:hover { transform: scale(1.02); }
-        .theme-preset-card.active { border-color: var(--accent); }
-
-        .loading-shimmer {
-            animation: shimmer 1.5s infinite linear;
-            background: linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 100%);
-            background-size: 200% auto;
-        }
-        @keyframes shimmer { 0% { background-position: 200% center; } 100% { background-position: -200% center; } }
-    </style>
-</head>
-<body class="p-4 md:p-10">
-
-    <div class="bg-layer" id="main-bg"></div>
-    <div id="bg-overlay"></div>
-
-    <div id="toast-container"></div>
-
-    <div class="search-bar-container">
-        <div class="glass-panel flex items-center px-4 py-2 gap-3 focus-within:ring-2 ring-indigo-500/50 transition-all">
-            <i class="ph ph-magnifying-glass text-white/40"></i>
-            <input type="text" id="global-search" placeholder="Search apps, or ask AI..." class="bg-transparent border-none outline-none text-sm w-full font-medium" oninput="handleGlobalSearch(this.value)" onkeydown="if(event.key === 'Enter') handleSearchEnter(this.value)">
-            
-            <button onclick="startVoiceRecognition()" id="btn-voice" class="text-white/40 hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center" title="Voice Command">
-                <i class="ph-fill ph-microphone text-lg"></i>
-            </button>
-            
-            <span class="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-white/40">⌘K</span>
-        </div>
-        <div id="search-results" class="search-results-overlay glass-panel hidden flex flex-col p-2 gap-1"></div>
-    </div>
-
-    <main class="max-w-[1500px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 mt-16">
-        
-        <aside class="lg:col-span-3 space-y-6">
-            <div id="widgets-container">
-                <div class="glass-panel p-8 text-center widget-item" id="widget-clock">
-                    <div id="clock" class="text-6xl font-extrabold tracking-tighter mb-2 flex items-center justify-center">00:00</div>
-                    <div id="date" class="text-white/40 font-semibold uppercase tracking-widest text-[11px]">January 01, 2024</div>
-                </div>
-                
-                <div class="glass-panel p-5 widget-item hidden" id="widget-notes">
-                    <div class="cat-tag">Quick Note</div>
-                    <div id="note-snippet" class="text-xs opacity-60 italic line-clamp-3">No notes yet. Use Scratchpad to add some.</div>
-                </div>
-
-                <div class="glass-panel p-5 widget-item hidden" id="widget-sysinfo">
-                    <div class="cat-tag">System Info</div>
-                    <div class="space-y-1 text-[10px] uppercase font-bold opacity-40">
-                        <div id="sys-os">OS: Detecting...</div>
-                        <div id="sys-browser">Browser: Detecting...</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="glass-panel p-6" id="panel-apps">
-                <div class="cat-tag">System Apps</div>
-                <div class="grid grid-cols-1 gap-3">
-                    <button onclick="toggleModal('ai-modal')" class="link-card w-full text-left group">
-                        <div class="icon-box bg-purple-500/20 text-purple-400 group-hover:bg-purple-500/30 transition-colors">
-                            <i class="ph-fill ph-sparkle text-xl"></i>
-                        </div>
-                        <div>
-                            <span class="text-sm font-bold block">✨ Assistant</span>
-                            <span class="text-[10px] opacity-40 uppercase tracking-wider">Local Chat</span>
-                        </div>
-                    </button>
-                    <button onclick="toggleModal('bookmark-modal')" class="link-card w-full text-left">
-                        <div class="icon-box bg-orange-500/20 text-orange-400">
-                            <i class="ph-fill ph-bookmarks text-xl"></i>
-                        </div>
-                        <div>
-                            <span class="text-sm font-bold block">Bookmarks</span>
-                            <span class="text-[10px] opacity-40 uppercase">Saved Links</span>
-                        </div>
-                    </button>
-                    <button onclick="toggleModal('calc-modal')" class="link-card w-full text-left">
-                        <div class="icon-box bg-indigo-500/20 text-indigo-400">
-                            <i class="ph-fill ph-calculator text-xl"></i>
-                        </div>
-                        <div>
-                            <span class="text-sm font-bold block">Calculator</span>
-                            <span class="text-[10px] opacity-40 uppercase">Utility App</span>
-                        </div>
-                    </button>
-                    <button onclick="toggleModal('more-apps-modal')" class="link-card w-full text-left group">
-                        <div class="icon-box bg-pink-500/20 text-pink-400 group-hover:bg-pink-500/30 transition-colors">
-                            <i class="ph-fill ph-squares-four text-xl"></i>
-                        </div>
-                        <div>
-                            <span class="text-sm font-bold block">App Library</span>
-                            <span class="text-[10px] opacity-40 uppercase tracking-wider">More Tools & Sites</span>
-                        </div>
-                    </button>
-                </div>
-            </div>
-
-            <div class="glass-panel p-6">
-                <div class="cat-tag">Personalization</div>
-                <div class="space-y-4">
-                    <button onclick="toggleModal('theme-modal')" class="link-card w-full">
-                        <i class="ph ph-palette text-xl text-white/60"></i>
-                        <span class="text-sm font-semibold">Theme Engine</span>
-                    </button>
-                    <button onclick="toggleModal('wallpaper-modal')" class="link-card w-full">
-                        <i class="ph ph-image text-xl text-white/60"></i>
-                        <span class="text-sm font-semibold">Wallpaper Manager</span>
-                    </button>
-                    <button onclick="toggleModal('widget-modal')" class="link-card w-full">
-                        <i class="ph ph-squares-four text-xl text-white/60"></i>
-                        <span class="text-sm font-semibold">Widget Manager</span>
-                    </button>
-                    <button onclick="toggleModal('layout-modal')" class="link-card w-full">
-                        <i class="ph ph-layout text-xl text-white/60"></i>
-                        <span class="text-sm font-semibold">Layout & Editor</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="glass-panel p-6">
-                <div class="cat-tag">Quick Search</div>
-                <div class="space-y-3">
-                    <a href="https://www.google.com/" target="_blank" class="link-card">
-                        <img src="https://www.google.com/favicon.ico" class="site-img">
-                        <span class="text-sm font-semibold">Google Search</span>
-                    </a>
-                    <a href="https://cobalt.tools/" target="_blank" class="link-card">
-                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzcEQ0MSd5yLPamOTnD1EQqqiqlEvhhxgxug&s" class="site-img">
-                        <span class="text-sm font-semibold">Cobalt Tool</span>
-                    </a>
-                </div>
-            </div>
-        </aside>
-
-        <div class="lg:col-span-9 space-y-8">
-            
-            <header class="flex justify-between items-end px-2">
-                <div>
-                    <h1 class="text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-white/40">Terminal</h1>
-                    <p class="text-white/30 text-xs uppercase tracking-[0.3em] mt-2 font-semibold">System Hub v2.0 • Local Code</p>
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="location.reload()" class="glass-panel p-3 rounded-xl hover:bg-white/10 transition-all hover:scale-110 active:scale-95">
-                        <i class="ph-bold ph-arrows-clockwise text-xl"></i>
-                    </button>
-                </div>
-            </header>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="main-grid">
-                
-                <div class="glass-panel p-6 layout-panel" id="panel-ai" draggable="true">
-                    <div class="cat-tag"><i class="ph-fill ph-cpu"></i> Cognitive Tools</div>
-                    <div class="space-y-3">
-                        <a href="https://gemini.google.com/app" target="_blank" class="link-card"><img src="https://mir-s3-cdn-cf.behance.net/project_modules/max_1200_webp/7cf51e188450701.65b6d6991d38d.png" class="site-img"><span class="text-sm font-bold">Gemini AI</span></a>
-                        <a href="https://chatgpt.com/" target="_blank" class="link-card"><img src="https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg" class="site-img"><span class="text-sm font-bold">ChatGPT</span></a>
-                        <a href="https://claude.ai/" target="_blank" class="link-card"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTpFdyVpVeiHpaCdE4FL2M9YJZRPU-wbWgqRQ&s" class="site-img"><span class="text-sm font-bold">Claude AI</span></a>
-                        <a href="https://grok.com/" target="_blank" class="link-card"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTOv3K6RevHQCscoWPa2BvxKTq-9ygcQ4mhRA&s" class="site-img"><span class="text-sm font-bold">Grok</span></a>
-                        <a href="https://kimi.com/" target="_blank" class="link-card"><img src="https://hdrobots.com/wp-content/uploads/2025/02/kimi-ai-logo.webp" class="site-img"><span class="text-sm font-bold">Kimi AI</span></a>
-                        <a href="https://notebooklm.google.com/" target="_blank" class="link-card"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQQTvxLMLI3tO7lyTzJ7hZecBTpwU3i1wEYKA&s" class="site-img"><span class="text-sm font-bold">NotebookLM</span></a>
-                        <a href="https://app.sesame.com/login" target="_blank" class="link-card"><div class="icon-box bg-yellow-400 text-black">S</div><span class="text-sm font-bold">Sesame AI</span></a>
-                    </div>
-                </div>
-
-                <div class="glass-panel p-6 layout-panel" id="panel-media" draggable="true">
-                    <div class="cat-tag"><i class="ph-fill ph-video"></i> Production</div>
-                    <div class="space-y-3">
-                        <a href="https://sora.chatgpt.com/library" target="_blank" class="link-card"><img src="https://framerusercontent.com/images/Z6kVXpB28iOTOy6eBgwuaF7CIU.png?width=460&height=460" class="site-img"><span class="text-sm font-bold">Sora Video</span></a>
-                        <a href="https://app.leonardo.ai/" target="_blank" class="link-card"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTjPkARR7pj9SaGQNBn3j-0XXfDuPlW-07vLQ&s" class="site-img"><span class="text-sm font-bold">Leonardo AI</span></a>
-                        <a href="https://suno.com/create" target="_blank" class="link-card"><img src="https://play-lh.googleusercontent.com/5UR_1gDasYzAjJYSdx9onJ5FT68TVzxcV6O_FjTS2X_95_qHgexX__mCa_23lUIgWlU" class="site-img"><span class="text-sm font-bold">Suno AI</span></a>
-                        <a href="https://express.adobe.com/" target="_blank" class="link-card"><img src="https://play-lh.googleusercontent.com/RKt7FfLHYfXyEJkY2imqAe1BP96wjAHtm7tH_rZZmBBX2QkC_2luYj6jXlPqoRhX5HmB" class="site-img"><span class="text-sm font-bold">Adobe Express</span></a>
-                    </div>
-
-                    <div class="cat-tag mt-8"><i class="ph-fill ph-chat-centered-text"></i> Connectivity</div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="https://mail.google.com" target="_blank" class="link-card p-2 flex-col text-center"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSUmNZiASUdwHTjfJlXLBGc-P-TVxvf1d0lXQ&s" class="w-8 h-8 rounded-lg"><span class="text-[11px] font-bold">Gmail</span></a>
-                        <a href="https://web.whatsapp.com/" target="_blank" class="link-card p-2 flex-col text-center"><img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-8 h-8"><span class="text-[11px] font-bold">WhatsApp</span></a>
-                        <a href="https://discord.com/channels/@me" target="_blank" class="link-card p-2 flex-col text-center"><img src="https://images-eds-ssl.xboxlive.com/image?url=4rt9.lXDC4H_93laV1_eHHFT949fUipzkiFOBH3fAiZZUCdYojwUyX2aTonS1aIwMrx6NUIsHfUHSLzjGJFxxsG72wAo9EWJR4yQWyJJaDaK1XdUso6cUMpI9hAdPUU_FNs11cY1X284vsHrnWtRw7oqRpN1m9YAg21d_aNKnIo-&format=source" class="w-8 h-8"><span class="text-[11px] font-bold">Discord</span></a>
-                        <a href="https://www.instagram.com/" target="_blank" class="link-card p-2 flex-col text-center"><img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" class="w-8 h-8"><span class="text-[11px] font-bold">Instagram</span></a>
-                    </div>
-                </div>
-
-                <div class="glass-panel p-6 layout-panel" id="panel-edu" draggable="true">
-                    <div class="cat-tag"><i class="ph-fill ph-book-open"></i> Academy</div>
-                    <div class="space-y-3 mb-8">
-                        <a href="https://jhps.myclassboard.com/" target="_blank" class="link-card"><div class="icon-box bg-blue-800 text-white">MCB</div><span class="text-sm font-bold">JHPS Portal</span></a>
-                        <a href="https://nexttoppers.com/" target="_blank" class="link-card"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJ1jU5sigtJx83d3b4UHThkyIAY6JJiZdxMw&s" class="site-img"><span class="text-sm font-bold">NextToppers</span></a>
-                        <a href="https://missionjeet.in/#about" target="_blank" class="link-card"><img src="https://yt3.googleusercontent.com/eSt2fF6E239rD5Mlim_0DMX6-UM6EJh5cQSxgWQxsNwkeMEFMtJlPJp4EpFZiE6LDkz9T4diuQ=s900-c-k-c0x00ffffff-no-rj" class="site-img"><span class="text-sm font-bold">Mission Jeet</span></a>
-                    </div>
-
-                    <div class="cat-tag"><i class="ph-fill ph-tv"></i> Entertainment</div>
-                    <div class="space-y-3">
-                        <a href="https://youtube.com/" target="_blank" class="link-card"><img src="https://upload.wikimedia.org/wikipedia/commons/6/62/YouTube_social_white_square_%282024%29.svg" class="site-img"><span class="text-sm font-bold">YouTube</span></a>
-                        <a href="https://open.spotify.com/" target="_blank" class="link-card"><img src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg" class="site-img"><span class="text-sm font-bold">Spotify</span></a>
-                        <a href="https://mangafire.to/home" target="_blank" class="link-card"><div class="icon-box bg-orange-600">🔥</div><span class="text-sm font-bold">Manga Fire</span></a>
-                        <a href="https://streamex.net/" target="_blank" class="link-card"><div class="icon-box bg-purple-600"><i class="ph ph-monitor-play text-xl"></i></div><span class="text-sm font-bold">StreamX</span></a>
-                    </div>
-
-                    <div class="cat-tag mt-8"><i class="ph-fill ph-game-controller"></i> Gaming</div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <a href="https://store.steampowered.com/" target="_blank" class="link-card p-2"><img src="https://store.steampowered.com/favicon.ico" class="w-6 h-6"><span class="text-[10px] font-bold">Steam</span></a>
-                        <a href="https://store.epicgames.com/" target="_blank" class="link-card p-2"><img src="https://upload.wikimedia.org/wikipedia/commons/3/31/Epic_Games_logo.svg" class="w-6 h-6"><span class="text-[10px] font-bold">Epic</span></a>
-                        <a href="https://aternos.org/:en/" target="_blank" class="link-card p-2"><img src="https://www.google.com/s2/favicons?domain=aternos.org&sz=128" class="w-6 h-6 rounded-md"><span class="text-[10px] font-bold">Aternos</span></a>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-    </main>
-
-    <div class="bottom-dock glass-panel">
-        <div class="dock-item" onclick="toggleModal('ai-modal')" title="Assistant"><i class="ph-fill ph-sparkle text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('more-apps-modal')" title="App Library"><i class="ph-fill ph-squares-four text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('bookmark-modal')" title="Bookmark Manager"><i class="ph-fill ph-bookmarks text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('calc-modal')" title="Calculator"><i class="ph-fill ph-calculator text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('converter-modal')" title="Unit Converter"><i class="ph-fill ph-arrows-left-right text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('scratchpad-modal')" title="Scratchpad"><i class="ph-fill ph-notepad text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('theme-modal')" title="Theme Manager"><i class="ph-fill ph-palette text-xl"></i></div>
-        <div class="dock-item" onclick="toggleModal('wallpaper-modal')" title="Wallpapers"><i class="ph-fill ph-image text-xl"></i></div>
-    </div>
-
-    <div id="more-apps-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('more-apps-modal')"></div>
-        <div class="glass-panel w-full max-w-4xl p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container overflow-hidden flex flex-col max-h-[85vh]">
-            
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-pink-500 rounded-xl flex items-center justify-center shadow-lg"><i class="ph-fill ph-squares-four text-white text-xl"></i></div>
-                    <div>
-                        <span class="font-bold text-xl tracking-tight block leading-none">App Library</span>
-                        <span class="text-[10px] opacity-40 uppercase tracking-widest font-bold">Dynamic Ecosystem</span>
-                    </div>
-                </div>
-                <button onclick="toggleModal('more-apps-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-3 mb-6 bg-white/5 p-4 rounded-2xl border border-white/10">
-                <input type="text" id="app-name" placeholder="App Name" class="bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-pink-500 transition-colors md:col-span-1">
-                <input type="text" id="app-url" placeholder="URL (e.g. github.com)" class="bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-pink-500 transition-colors md:col-span-1">
-                <input type="text" id="app-img" placeholder="Image URL (Optional)" class="bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-pink-500 transition-colors md:col-span-1">
-                
-                <input type="text" list="app-categories" id="app-cat" placeholder="Category" class="bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-pink-500 transition-colors md:col-span-1">
-                <datalist id="app-categories"></datalist>
-
-                <button onclick="addMoreApp()" class="bg-pink-600 hover:bg-pink-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95 md:col-span-1 flex items-center justify-center gap-2">
-                    <i class="ph-bold ph-plus"></i> Add App
-                </button>
-            </div>
-            
-            <div class="flex-1 overflow-y-auto pr-4" id="apps-container"></div>
-        </div>
-    </div>
-
-    <div id="bookmark-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('bookmark-modal')"></div>
-        <div class="glass-panel w-full max-w-2xl p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container overflow-hidden flex flex-col max-h-[80vh]">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center"><i class="ph ph-bookmarks text-white"></i></div>
-                    <span class="font-bold text-lg tracking-tight">Bookmark Manager</span>
-                </div>
-                <button onclick="toggleModal('bookmark-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <input type="text" id="bm-name" placeholder="Name (e.g. YouTube)" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-orange-500 transition-colors">
-                <input type="text" id="bm-url" placeholder="URL (e.g. youtube.com)" class="bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none focus:border-orange-500 transition-colors">
-                <button onclick="addBookmark()" class="md:col-span-2 bg-orange-600 hover:bg-orange-500 p-3 rounded-xl font-bold text-sm transition-all active:scale-95">Add Bookmark</button>
-            </div>
-
-            <div class="flex-1 overflow-y-auto pr-2 grid grid-cols-2 md:grid-cols-3 gap-3" id="bookmarks-grid"></div>
-        </div>
-    </div>
-
-    <div id="theme-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('theme-modal')"></div>
-        <div class="glass-panel w-full max-w-3xl p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center"><i class="ph ph-palette text-white"></i></div>
-                    <span class="font-bold text-lg tracking-tight">Theme Engine</span>
-                </div>
-                <button onclick="toggleModal('theme-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div class="theme-preset-card active" data-theme="glass" onclick="applyTheme('glass')" style="background: radial-gradient(circle, #1e293b, #0f172a);">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm">Glass Default</div>
-                </div>
-                <div class="theme-preset-card" data-theme="midnight" onclick="applyTheme('midnight')" style="background: #000814;">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm">Midnight Dark</div>
-                </div>
-                <div class="theme-preset-card" data-theme="cyberpunk" onclick="applyTheme('cyberpunk')" style="background: linear-gradient(135deg, #2d00f7, #ff00ff);">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm">Cyber Purple</div>
-                </div>
-                <div class="theme-preset-card" data-theme="ocean" onclick="applyTheme('ocean')" style="background: #003566;">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm">Ocean Blue</div>
-                </div>
-                <div class="theme-preset-card" data-theme="minimal" onclick="applyTheme('minimal')" style="background: #f8fafc;">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm text-slate-900">Minimal Light</div>
-                </div>
-                <div class="theme-preset-card" data-theme="oled" onclick="applyTheme('oled')" style="background: #000;">
-                    <div class="absolute inset-0 flex items-center justify-center font-bold text-sm">OLED Black</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="calc-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('calc-modal')"></div>
-        <div class="glass-panel w-[340px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center"><i class="ph ph-calculator text-white"></i></div>
-                    <span class="font-bold text-lg tracking-tight">Calculator</span>
-                </div>
-                <button onclick="toggleModal('calc-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            <div id="calc-display" class="w-full bg-black/40 rounded-2xl p-5 text-right text-3xl font-mono mb-6 h-20 flex items-center justify-end border border-white/10 overflow-hidden shadow-inner">0</div>
-            <div class="grid grid-cols-4 gap-3">
-                <button class="calc-btn text-red-400 font-bold" onclick="calcClear()">C</button>
-                <button class="calc-btn op" onclick="calcInput('/')">÷</button>
-                <button class="calc-btn op" onclick="calcInput('*')">×</button>
-                <button class="calc-btn op" onclick="calcInput('-')">-</button>
-                <button class="calc-btn" onclick="calcInput('7')">7</button>
-                <button class="calc-btn" onclick="calcInput('8')">8</button>
-                <button class="calc-btn" onclick="calcInput('9')">9</button>
-                <button class="calc-btn op" onclick="calcInput('+')">+</button>
-                <button class="calc-btn" onclick="calcInput('4')">4</button>
-                <button class="calc-btn" onclick="calcInput('5')">5</button>
-                <button class="calc-btn" onclick="calcInput('6')">6</button>
-                <button class="calc-btn eq row-span-2 h-full" onclick="calcEquals()">=</button>
-                <button class="calc-btn" onclick="calcInput('1')">1</button>
-                <button class="calc-btn" onclick="calcInput('2')">2</button>
-                <button class="calc-btn" onclick="calcInput('3')">3</button>
-                <button class="calc-btn col-span-2" onclick="calcInput('0')">0</button>
-                <button class="calc-btn" onclick="calcInput('.')">.</button>
-                <button class="calc-btn op" onclick="calcDelete()"><i class="ph-bold ph-backspace"></i></button>
-            </div>
-        </div>
-    </div>
-
-    <div id="converter-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('converter-modal')"></div>
-        <div class="glass-panel w-[380px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center"><i class="ph ph-arrows-left-right text-white"></i></div>
-                    <span class="font-bold text-lg tracking-tight">Unit Converter</span>
-                </div>
-                <button onclick="toggleModal('converter-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
-                <select id="convert-cat" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm font-semibold outline-none focus:border-cyan-500 transition-colors" onchange="populateUnits()">
-                    <option value="length">Length</option>
-                    <option value="weight">Weight</option>
-                    <option value="temp">Temperature</option>
-                    <option value="data">Data</option>
-                </select>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="space-y-1">
-                        <label class="text-[10px] uppercase font-bold opacity-40 ml-1">From</label>
-                        <select id="convert-from" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none" onchange="doConvert()"></select>
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] uppercase font-bold opacity-40 ml-1">To</label>
-                        <select id="convert-to" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm outline-none" onchange="doConvert()"></select>
-                    </div>
-                </div>
-                <div class="space-y-1">
-                    <label class="text-[10px] uppercase font-bold opacity-40 ml-1">Input Value</label>
-                    <input type="number" id="convert-input" placeholder="0.00" class="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-xl font-mono outline-none focus:border-cyan-500" oninput="doConvert()">
-                </div>
-                <div class="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-5 text-center">
-                    <div class="text-[10px] uppercase font-bold text-cyan-400 mb-1 tracking-widest">Result</div>
-                    <div id="convert-result" class="text-2xl font-mono text-white">0.00</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="scratchpad-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('scratchpad-modal')"></div>
-        <div class="glass-panel w-full max-w-xl h-[550px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center"><i class="ph ph-notepad text-white"></i></div>
-                    <span class="font-bold text-lg tracking-tight">Smart Scratchpad</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="clearScratchpad()" class="text-[10px] font-bold uppercase text-white/40 hover:text-red-400 transition-colors">Clear All</button>
-                    <button onclick="toggleModal('scratchpad-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-                </div>
-            </div>
-            
-            <div class="flex gap-2 mb-3 overflow-x-auto pb-2">
-                <button onclick="aiModifyNote('summarize')" class="bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-200 text-xs px-3 py-1.5 rounded-lg transition-colors border border-emerald-500/30 flex items-center gap-1 whitespace-nowrap">
-                    ✨ Summarize
-                </button>
-                <button onclick="aiModifyNote('grammar')" class="bg-blue-600/20 hover:bg-blue-600/40 text-blue-200 text-xs px-3 py-1.5 rounded-lg transition-colors border border-blue-500/30 flex items-center gap-1 whitespace-nowrap">
-                    ✨ Fix Grammar
-                </button>
-                <button onclick="aiModifyNote('expand')" class="bg-purple-600/20 hover:bg-purple-600/40 text-purple-200 text-xs px-3 py-1.5 rounded-lg transition-colors border border-purple-500/30 flex items-center gap-1 whitespace-nowrap">
-                    ✨ Continue Writing
-                </button>
-                <div id="scratchpad-loading" class="hidden flex items-center gap-2 px-2">
-                    <div class="spinner w-3 h-3 border-emerald-500"></div>
-                    <span class="text-[10px] opacity-60">Working...</span>
-                </div>
-            </div>
-
-            <textarea id="scratchpad-area" class="flex-1 bg-black/20 border border-white/5 rounded-2xl p-6 text-sm leading-relaxed outline-none focus:border-emerald-500/50 transition-colors resize-none font-medium" placeholder="Start typing... Your notes are auto-saved locally." oninput="saveScratchpad()"></textarea>
-            <div class="mt-3 text-[10px] font-bold text-white/20 uppercase text-center tracking-widest">Saved to LocalStorage</div>
-        </div>
-    </div>
-
-    <div id="wallpaper-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('wallpaper-modal')"></div>
-        <div class="glass-panel w-[450px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <span class="font-bold text-lg tracking-tight">Wallpaper Manager</span>
-                <button onclick="toggleModal('wallpaper-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div class="wallpaper-preset h-24 rounded-xl border border-white/10 cursor-pointer hover:scale-105 transition-transform" style="background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);" onclick="setWallpaper('dark')"></div>
-                <div class="wallpaper-preset h-24 rounded-xl border border-white/10 cursor-pointer hover:scale-105 transition-transform" style="background: radial-gradient(circle at 50% 50%, #2e1065 0%, #020617 100%);" onclick="setWallpaper('purple')"></div>
-                <div class="wallpaper-preset h-24 rounded-xl border border-white/10 cursor-pointer hover:scale-105 transition-transform" style="background: radial-gradient(circle at 50% 50%, #0c4a6e 0%, #020617 100%);" onclick="setWallpaper('blue')"></div>
-                <div class="wallpaper-preset h-24 rounded-xl border border-white/10 cursor-pointer hover:scale-105 transition-transform" style="background: #000;" onclick="setWallpaper('black')"></div>
-                
-                <div class="col-span-2 mt-4 pt-4 border-t border-white/10">
-                    <label class="text-xs font-bold uppercase opacity-60 mb-2 flex justify-between">
-                        <span>Generate Wallpaper</span>
-                        <span class="text-purple-400">✨ Imagen AI</span>
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="text" id="wall-prompt" placeholder="E.g. Cyberpunk city in rain, neon lights, 4k..." class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs flex-1 outline-none focus:border-purple-500">
-                        <button onclick="generateWallpaper()" id="btn-gen-wall" class="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded-xl transition-colors flex items-center justify-center w-10">
-                            <i class="ph-bold ph-magic-wand"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="widget-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('widget-modal')"></div>
-        <div class="glass-panel w-[350px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <span class="font-bold text-lg tracking-tight">Widget Manager</span>
-                <button onclick="toggleModal('widget-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">Clock Widget</span>
-                    <input type="checkbox" checked onchange="toggleWidget('widget-clock', this.checked)">
-                </div>
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">Quick Note Snippet</span>
-                    <input type="checkbox" onchange="toggleWidget('widget-notes', this.checked)" id="cb-widget-notes">
-                </div>
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">System Info</span>
-                    <input type="checkbox" onchange="toggleWidget('widget-sysinfo', this.checked)" id="cb-widget-sys">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="layout-modal" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('layout-modal')"></div>
-        <div class="glass-panel w-[350px] p-6 relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="flex justify-between items-center mb-6">
-                <span class="font-bold text-lg tracking-tight">Layout Manager</span>
-                <button onclick="toggleModal('layout-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">AI Studio Panel</span>
-                    <input type="checkbox" checked onchange="togglePanel('panel-ai', this.checked)">
-                </div>
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">Media Panel</span>
-                    <input type="checkbox" checked onchange="togglePanel('panel-media', this.checked)">
-                </div>
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">Academy Panel</span>
-                    <input type="checkbox" checked onchange="togglePanel('panel-edu', this.checked)">
-                </div>
-                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
-                    <span class="text-sm font-bold">System Apps Panel</span>
-                    <input type="checkbox" checked onchange="togglePanel('panel-apps', this.checked)">
-                </div>
-                <div class="mt-4 pt-4 border-t border-white/10">
-                    <button onclick="resetPanelOrder()" class="w-full bg-white/5 hover:bg-white/10 p-2 rounded-xl text-[10px] uppercase font-bold tracking-widest transition-all">Reset Panel Order</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="ai-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center hidden opacity-0 pointer-events-none">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-md" onclick="toggleModal('ai-modal')"></div>
-        <div class="glass-panel w-full max-w-2xl h-[600px] flex flex-col p-0 overflow-hidden relative shadow-2xl transform scale-95 transition-all duration-300 app-container">
-            <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg"><i class="ph-fill ph-sparkle text-white text-xl"></i></div>
-                    <div>
-                        <span class="font-bold text-xl tracking-tight block leading-none">Local Assistant</span>
-                        <span class="text-[10px] opacity-40 uppercase tracking-widest font-bold">Code Based Rules</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="flex bg-white/5 rounded-lg p-1 mr-4">
-                        <button onclick="switchTab('chat')" id="tab-chat" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white/10 text-white">Chat</button>
-                        <button onclick="switchTab('image')" id="tab-image" class="px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white/40 hover:text-white">Image Lab</button>
-                    </div>
-                    <button onclick="toggleModal('ai-modal')" class="hover:bg-white/10 rounded-full p-2 transition-colors"><i class="ph-bold ph-x text-lg"></i></button>
-                </div>
-            </div>
-            
-            <div id="view-chat" class="flex-1 flex flex-col p-6 overflow-hidden">
-                <div id="chat-history" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-3 mb-4 scroll-smooth">
-                    <div class="ai-chat-bubble ai-bubble-bot">
-                        Greetings. I am your local system assistant. I can help you find information or control this system. Try commands like "open app library", "open calculator" or "change theme". I do not require internet.
-                    </div>
-                </div>
-                <div class="flex gap-3 bg-white/5 p-2 rounded-2xl border border-white/10 focus-within:border-purple-500/50 transition-colors relative">
-                    <input type="text" id="ai-input-text" placeholder="Ask anything..." class="flex-1 bg-transparent border-none outline-none px-4 text-sm font-medium" onkeydown="if(event.key === 'Enter') handleAiAction('chat')">
-                    <button onclick="handleAiAction('chat')" id="ai-btn-chat" class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center hover:bg-purple-500 transition-colors active:scale-90 flex-shrink-0">
-                        <i class="ph-bold ph-paper-plane-tilt"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div id="view-image" class="flex-1 hidden flex flex-col p-6 overflow-hidden">
-                <div class="flex-1 flex items-center justify-center bg-black/20 rounded-2xl border border-white/5 mb-6 relative group overflow-hidden">
-                    <div id="image-placeholder" class="text-white/20 flex flex-col items-center gap-3"><i class="ph ph-image-square text-6xl"></i><span class="text-sm font-bold uppercase tracking-widest">Image Preview</span></div>
-                    <img id="generated-image" class="hidden w-full h-full object-contain z-10">
-                    <div id="image-loading" class="hidden absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-4 backdrop-blur-sm z-20">
-                        <div class="spinner w-8 h-8 border-purple-500"></div>
-                        <span class="text-xs font-bold uppercase tracking-widest text-purple-400">Processing locally...</span>
-                    </div>
-                </div>
-                <div class="flex gap-3 bg-white/5 p-2 rounded-2xl border border-white/10">
-                    <input type="text" id="ai-input-image" placeholder="Image generation relies on an external API..." class="flex-1 bg-transparent border-none outline-none px-4 text-sm font-medium" onkeydown="if(event.key === 'Enter') handleAiAction('image')">
-                    <button onclick="handleAiAction('image')" id="ai-btn-image" class="px-6 h-10 bg-purple-600 rounded-xl flex items-center gap-2 font-bold text-xs hover:bg-purple-500 transition-colors active:scale-95 whitespace-nowrap"><i class="ph-bold ph-magic-wand"></i> ✨ Generate</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // --- DATA KEYS ---
-        const ACCENT_KEY = 'system_accent';
-        const WALLPAPER_KEY = 'system_wallpaper';
-        const LAYOUT_KEY = 'system_layout';
-        const SCRATCH_KEY = 'system_scratchpad';
-        const BOOKMARKS_KEY = 'systemhub_bookmarks';
-        const THEME_KEY = 'systemhub_theme';
-        const WIDGETS_KEY = 'systemhub_widgets';
-        const ORDER_KEY = 'systemhub_grid_order';
-        const MORE_APPS_KEY = 'systemhub_more_apps'; 
-
-        // --- THEME DEFINITIONS ---
-        const themes = {
-            glass: {
-                glass: 'rgba(10, 10, 15, 0.75)',
-                border: 'rgba(255, 255, 255, 0.1)',
-                text: '#ffffff',
-                text2: 'rgba(255, 255, 255, 0.4)',
-                bg: 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)'
-            },
-            midnight: {
-                glass: 'rgba(5, 5, 10, 0.9)',
-                border: 'rgba(255, 255, 255, 0.05)',
-                text: '#f1f5f9',
-                text2: 'rgba(241, 245, 249, 0.3)',
-                bg: 'linear-gradient(to bottom, #020617, #000000)'
-            },
-            cyberpunk: {
-                glass: 'rgba(20, 0, 40, 0.8)',
-                border: 'rgba(255, 0, 255, 0.2)',
-                text: '#00ffff',
-                text2: 'rgba(0, 255, 255, 0.4)',
-                bg: 'linear-gradient(45deg, #0f0c29, #302b63, #24243e)'
-            },
-            ocean: {
-                glass: 'rgba(0, 30, 60, 0.7)',
-                border: 'rgba(0, 255, 255, 0.15)',
-                text: '#e0f2fe',
-                text2: 'rgba(224, 242, 254, 0.4)',
-                bg: 'radial-gradient(circle at top, #0c4a6e 0%, #082f49 100%)'
-            },
-            minimal: {
-                glass: 'rgba(255, 255, 255, 0.9)',
-                border: 'rgba(0, 0, 0, 0.1)',
-                text: '#1e293b',
-                text2: 'rgba(30, 41, 59, 0.5)',
-                bg: '#f1f5f9'
-            },
-            oled: {
-                glass: 'rgba(15, 15, 15, 1)',
-                border: 'rgba(255, 255, 255, 0.1)',
-                text: '#ffffff',
-                text2: '#666666',
-                bg: '#000000'
-            }
-        };
-
-        const units = {
-            length: { mm: 1, cm: 10, m: 1000, km: 1000000 },
-            weight: { g: 1, kg: 1000 },
-            temp: { c: 'c', f: 'f' },
-            data: { b: 1, kb: 1024, mb: 1048576, gb: 1073741824 }
-        };
-
-        // --- INITIALIZATION ---
-        window.onload = function() {
-            updateClock();
-            setInterval(updateClock, 1000);
-            
-            // Load Prefs
-            const savedAccent = localStorage.getItem(ACCENT_KEY) || '#6366f1';
-            setAccent(savedAccent);
-            
-            const savedTheme = localStorage.getItem(THEME_KEY) || 'glass';
-            applyTheme(savedTheme);
-
-            const savedWP = localStorage.getItem(WALLPAPER_KEY) || 'dark';
-            if (savedTheme === 'glass') setWallpaper(savedWP);
-
-            loadScratchpad();
-            renderBookmarks();
-            renderMoreApps(); 
-            initDragAndDrop();
-            initSysInfo();
-            loadWidgetsState();
-            loadPanelState();
-            loadPanelOrder();
-
-            populateUnits();
-        };
-
-        // --- SYSTEM ENGINE ---
-        function applyTheme(name) {
-            const theme = themes[name];
-            if (!theme) return;
-
-            const root = document.documentElement;
-            root.style.setProperty('--glass', theme.glass);
-            root.style.setProperty('--glass-border', theme.border);
-            root.style.setProperty('--text-primary', theme.text);
-            root.style.setProperty('--text-secondary', theme.text2);
-            root.style.setProperty('--bg-gradient', theme.bg);
-
-            localStorage.setItem(THEME_KEY, name);
-            document.querySelectorAll('.theme-preset-card').forEach(card => {
-                card.classList.toggle('active', card.dataset.theme === name);
-            });
-        }
-
-        function setAccent(color) {
-            document.documentElement.style.setProperty('--accent', color);
-            localStorage.setItem(ACCENT_KEY, color);
-        }
-
-        function setWallpaper(typeOrUrl) {
-            const bg = document.getElementById('main-bg');
-            let val = '';
-            
-            if (typeOrUrl.startsWith('data:') || typeOrUrl.startsWith('http')) {
-                bg.style.backgroundImage = `url('${typeOrUrl}')`;
-            } else {
-                switch(typeOrUrl) {
-                    case 'dark': val = 'radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%)'; break;
-                    case 'purple': val = 'radial-gradient(circle at 50% 50%, #2e1065 0%, #020617 100%)'; break;
-                    case 'blue': val = 'radial-gradient(circle at 50% 50%, #0c4a6e 0%, #020617 100%)'; break;
-                    case 'black': val = '#000'; break;
-                    default: val = '#0f172a';
-                }
-                bg.style.background = val; 
-                localStorage.setItem(WALLPAPER_KEY, typeOrUrl);
-            }
-        }
-
-        function togglePanel(id, visible) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.style.display = visible ? 'block' : 'none';
-            const state = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {};
-            state[id] = visible;
-            localStorage.setItem(LAYOUT_KEY, JSON.stringify(state));
-        }
-
-        function loadPanelState() {
-            const state = JSON.parse(localStorage.getItem(LAYOUT_KEY)) || {};
-            Object.keys(state).forEach(id => {
-                const el = document.getElementById(id);
-                if(el) el.style.display = state[id] ? 'block' : 'none';
-                const cb = document.querySelector(`input[onchange*="${id}"]`);
-                if(cb) cb.checked = state[id];
-            });
-        }
-
-        // --- BOOKMARK MANAGER ---
-        function getBookmarks() {
-            const defaults = [
-                { name: 'YouTube', url: 'https://youtube.com' },
-                { name: 'Google', url: 'https://google.com' },
-                { name: 'ChatGPT', url: 'https://chatgpt.com' }
-            ];
-            return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)) || defaults;
-        }
-
-        function addBookmark() {
-            const name = document.getElementById('bm-name').value.trim();
-            let url = document.getElementById('bm-url').value.trim();
-            if (!name || !url) return;
-            if (!url.startsWith('http')) url = 'https://' + url;
-
-            const bms = getBookmarks();
-            bms.push({ name, url });
-            localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bms));
-            document.getElementById('bm-name').value = '';
-            document.getElementById('bm-url').value = '';
-            renderBookmarks();
-        }
-
-        function deleteBookmark(idx) {
-            const bms = getBookmarks();
-            bms.splice(idx, 1);
-            localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bms));
-            renderBookmarks();
-        }
-
-        function renderBookmarks() {
-            const grid = document.getElementById('bookmarks-grid');
-            const bms = getBookmarks();
-            grid.innerHTML = '';
-            bms.forEach((bm, i) => {
-                const domain = new URL(bm.url).hostname;
-                const card = document.createElement('div');
-                card.className = "link-card flex-col relative group text-center";
-                card.innerHTML = `
-                    <button onclick="deleteBookmark(${i})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"><i class="ph ph-trash"></i></button>
-                    <a href="${bm.url}" target="_blank" class="w-full flex flex-col items-center gap-2">
-                        <img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" class="site-img w-12 h-12">
-                        <span class="text-[11px] font-bold truncate w-full">${bm.name}</span>
-                    </a>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // --- DYNAMIC APP LIBRARY ---
-        function getMoreApps() {
-            const defaults = [
-                { id: 1, name: 'GitHub', url: 'https://github.com', img: 'https://github.githubassets.com/favicons/favicon.svg', cat: 'Developer Hub' },
-                { id: 2, name: 'CodePen', url: 'https://codepen.io', img: 'https://cpwebassets.codepen.io/assets/favicon/favicon-aec34940fbc1a6e787974dcd360f2c6b63348d4b1f4e06c77743096d55480f33.ico', cat: 'Developer Hub' },
-                { id: 3, name: 'Rainmeter', url: 'https://www.rainmeter.net', img: 'https://www.rainmeter.net/favicon.ico', cat: 'Desktop Customization' },
-                { id: 4, name: 'VisualSkins', url: 'https://visualskins.com', img: '', cat: 'Desktop Customization' },
-                { id: 5, name: 'Suno AI', url: 'https://suno.com', img: '', cat: 'Generative Labs' },
-                { id: 6, name: 'Civitai', url: 'https://civitai.com', img: '', cat: 'Generative Labs' }
-            ];
-            return JSON.parse(localStorage.getItem(MORE_APPS_KEY)) || defaults;
-        }
-
-        function addMoreApp() {
-            const name = document.getElementById('app-name').value.trim();
-            let url = document.getElementById('app-url').value.trim();
-            const img = document.getElementById('app-img').value.trim();
-            const cat = document.getElementById('app-cat').value.trim() || 'Uncategorized';
-
-            if (!name || !url) {
-                alert("App Name and URL are required!");
-                return;
-            }
-            if (!url.startsWith('http')) url = 'https://' + url;
-
-            const apps = getMoreApps();
-            apps.push({ id: Date.now(), name, url, img, cat });
-            localStorage.setItem(MORE_APPS_KEY, JSON.stringify(apps));
-
-            document.getElementById('app-name').value = '';
-            document.getElementById('app-url').value = '';
-            document.getElementById('app-img').value = '';
-            document.getElementById('app-cat').value = '';
-
-            renderMoreApps();
-        }
-
-        function deleteMoreApp(id) {
-            let apps = getMoreApps();
-            apps = apps.filter(app => app.id !== id);
-            localStorage.setItem(MORE_APPS_KEY, JSON.stringify(apps));
-            renderMoreApps();
-        }
-
-        function renderMoreApps() {
-            const container = document.getElementById('apps-container');
-            const datalist = document.getElementById('app-categories');
-            const apps = getMoreApps();
-            
-            container.innerHTML = '';
-            datalist.innerHTML = '';
-
-            const grouped = apps.reduce((acc, app) => {
-                if (!acc[app.cat]) acc[app.cat] = [];
-                acc[app.cat].push(app);
-                return acc;
-            }, {});
-
-            Object.keys(grouped).forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                datalist.appendChild(option);
-            });
-
-            for (const [cat, items] of Object.entries(grouped)) {
-                const catDiv = document.createElement('div');
-                catDiv.innerHTML = `
-                    <div class="cat-tag mt-4"><i class="ph-fill ph-folder"></i> ${cat}</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="cat-grid-${cat.replace(/[^a-zA-Z0-9]/g, '-')}"></div>
-                `;
-                container.appendChild(catDiv);
-
-                const grid = catDiv.querySelector('.grid');
-                items.forEach(app => {
-                    const domain = new URL(app.url).hostname;
-                    
-                    let iconHtml = app.img 
-                        ? `<img src="${app.img}" class="site-img w-8 h-8 object-cover rounded-lg" onerror="this.src='https://www.google.com/s2/favicons?domain=${domain}&sz=128'">`
-                        : `<img src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" class="site-img w-8 h-8 object-cover rounded-lg">`;
-
-                    const card = document.createElement('div');
-                    card.className = "link-card p-3 relative group";
-                    card.innerHTML = `
-                        <button onclick="deleteMoreApp(${app.id})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity z-10"><i class="ph ph-trash"></i></button>
-                        <a href="${app.url}" target="_blank" class="flex items-center gap-3 w-full overflow-hidden">
-                            ${iconHtml}
-                            <div class="flex-1 min-w-0">
-                                <span class="text-sm font-bold block truncate">${app.name}</span>
-                                <span class="text-[10px] opacity-50 block truncate">${domain}</span>
-                            </div>
-
-                        </a>
-                    `;
-                    grid.appendChild(card);
-                });
-            }
-        }
-
-        // --- WIDGET SYSTEM ---
-        function toggleWidget(id, visible) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (visible) el.classList.remove('hidden');
-            else el.classList.add('hidden');
-            
-            const state = JSON.parse(localStorage.getItem(WIDGETS_KEY)) || {};
-            state[id] = visible;
-            localStorage.setItem(WIDGETS_KEY, JSON.stringify(state));
-        }
-
-        function loadWidgetsState() {
-            const state = JSON.parse(localStorage.getItem(WIDGETS_KEY)) || {};
-            Object.keys(state).forEach(id => {
-                const el = document.getElementById(id);
-                if(el) {
-                    if(state[id]) el.classList.remove('hidden');
-                    else el.classList.add('hidden');
-                }
-                const cb = document.getElementById('cb-' + id.replace('widget-', ''));
-                if(cb) cb.checked = state[id];
-            });
-        }
-
-        function initSysInfo() {
-            const os = navigator.platform;
-            const browser = navigator.userAgent.split(' ').pop();
-            document.getElementById('sys-os').innerText = "OS: " + os;
-            document.getElementById('sys-browser').innerText = "ENV: " + browser;
-        }
-
-        // --- DRAG AND DROP EDITOR ---
-        function initDragAndDrop() {
-            const grid = document.getElementById('main-grid');
-            const panels = document.querySelectorAll('.layout-panel');
-
-            panels.forEach(panel => {
-                panel.addEventListener('dragstart', () => panel.classList.add('dragging'));
-                panel.addEventListener('dragend', () => {
-                    panel.classList.remove('dragging');
-                    savePanelOrder();
-                });
-            });
-
-            grid.addEventListener('dragover', e => {
-                e.preventDefault();
-                const dragging = document.querySelector('.dragging');
-                const afterElement = getDragAfterElement(grid, e.clientX, e.clientY);
-                if (afterElement == null) {
-                    grid.appendChild(dragging);
-                } else {
-                    grid.insertBefore(dragging, afterElement);
-                }
-            });
-        }
-
-        function getDragAfterElement(container, x, y) {
-            const draggableElements = [...container.querySelectorAll('.layout-panel:not(.dragging)')];
-            return draggableElements.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = x - box.left - box.width / 2;
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-        }
-
-        function savePanelOrder() {
-            const order = [...document.querySelectorAll('.layout-panel')].map(p => p.id);
-            localStorage.setItem(ORDER_KEY, JSON.stringify(order));
-        }
-
-        function loadPanelOrder() {
-            const order = JSON.parse(localStorage.getItem(ORDER_KEY));
-            if (!order) return;
-            const grid = document.getElementById('main-grid');
-            order.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) grid.appendChild(el);
-            });
-        }
-
-        function resetPanelOrder() {
-            localStorage.removeItem(ORDER_KEY);
-            location.reload();
-        }
-
-        // --- MODAL SYSTEM ---
-        function toggleModal(id) {
-            const modal = document.getElementById(id);
-            if (!modal) return;
-            const container = modal.querySelector('.app-container');
-            if (modal.classList.contains('hidden')) {
-                modal.classList.remove('hidden');
-                setTimeout(() => {
-                    modal.classList.remove('opacity-0', 'pointer-events-none');
-                    container.classList.remove('scale-95');
-                    container.classList.add('scale-100');
-                }, 10);
-            } else {
-                modal.classList.add('opacity-0', 'pointer-events-none');
-                container.classList.remove('scale-100');
-                container.classList.add('scale-95');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            }
-        }
-
-        // --- GLOBAL SEARCH ---
-        function handleGlobalSearch(query) {
-            const resultsBox = document.getElementById('search-results');
-            if (!query.trim()) {
-                resultsBox.classList.add('hidden');
-                return;
-            }
-            resultsBox.classList.remove('hidden');
-            resultsBox.innerHTML = '';
-
-            const items = [];
-            document.querySelectorAll('[onclick*="toggleModal"]').forEach(btn => {
-                const name = btn.innerText.split('\n')[0].trim();
-                if (name && name.toLowerCase().includes(query.toLowerCase())) {
-                    items.push({ name, action: btn.getAttribute('onclick'), type: 'app' });
-                }
-            });
-            document.querySelectorAll('a.link-card, #bookmarks-grid a, #apps-container a').forEach(link => {
-                const name = link.innerText.trim();
-                if (name && name.toLowerCase().includes(query.toLowerCase())) {
-                    items.push({ name, action: () => window.open(link.href, '_blank'), type: 'link' });
-                }
-            });
-
-            const aiDiv = document.createElement('div');
-            aiDiv.className = "flex items-center gap-3 p-2 hover:bg-purple-600/30 rounded-xl cursor-pointer transition-colors border border-purple-500/20";
-            aiDiv.innerHTML = `<i class="ph-fill ph-sparkle text-purple-400"></i><span class="text-sm font-semibold">Ask Assistant: "${query}"</span>`;
-            aiDiv.onclick = () => {
-                toggleModal('ai-modal');
-                switchTab('chat');
-                document.getElementById('ai-input-text').value = query;
-                handleAiAction('chat');
-                document.getElementById('global-search').value = '';
-                resultsBox.classList.add('hidden');
-            };
-            resultsBox.appendChild(aiDiv);
-
-            items.slice(0, 5).forEach(item => {
-                const div = document.createElement('div');
-                div.className = "flex items-center gap-3 p-2 hover:bg-white/10 rounded-xl cursor-pointer transition-colors";
-                div.innerHTML = `<i class="ph ${item.type === 'app' ? 'ph-app-window' : 'ph-link'} opacity-40"></i><span class="text-sm font-semibold">${item.name}</span>`;
-                div.onclick = () => {
-                    if (typeof item.action === 'string') eval(item.action);
-                    else item.action();
-                    document.getElementById('global-search').value = '';
-                    resultsBox.classList.add('hidden');
-                };
-                resultsBox.appendChild(div);
-            });
-        }
-        
-        function handleSearchEnter(val) {
-             const resultsBox = document.getElementById('search-results');
-             if(resultsBox.children.length > 0) {
-                 resultsBox.children[0].click(); 
-             }
-        }
-
-        window.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-                e.preventDefault();
-                document.getElementById('global-search').focus();
-            }
-        });
-
-        // --- UNIT CONVERTER ---
-        function populateUnits() {
-            const cat = document.getElementById('convert-cat').value;
-            const from = document.getElementById('convert-from');
-            const to = document.getElementById('convert-to');
-            from.innerHTML = ''; to.innerHTML = '';
-            
-            Object.keys(units[cat]).forEach(u => {
-                const opt1 = new Option(u.toUpperCase(), u);
-                const opt2 = new Option(u.toUpperCase(), u);
-                from.add(opt1);
-                to.add(opt2);
-            });
-            if (to.options.length > 1) to.selectedIndex = 1;
-            doConvert();
-        }
-
-        function doConvert() {
-            const cat = document.getElementById('convert-cat').value;
-            const from = document.getElementById('convert-from').value;
-            const to = document.getElementById('convert-to').value;
-            const val = parseFloat(document.getElementById('convert-input').value) || 0;
-            const resEl = document.getElementById('convert-result');
-            
-            if (cat === 'temp') {
-                if (from === to) resEl.innerText = val.toFixed(2);
-                else if (from === 'c') resEl.innerText = ((val * 9/5) + 32).toFixed(2);
-                else resEl.innerText = ((val - 32) * 5/9).toFixed(2);
-            } else {
-                const baseVal = val * units[cat][from];
-                resEl.innerText = (baseVal / units[cat][to]).toFixed(4).replace(/\.?0+$/, "");
-            }
-        }
-
-        // --- SCRATCHPAD ---
-        function saveScratchpad() {
-            const txt = document.getElementById('scratchpad-area').value;
-            localStorage.setItem(SCRATCH_KEY, txt);
-            document.getElementById('note-snippet').innerText = txt.substring(0, 100) || "No notes yet.";
-        }
-        function loadScratchpad() {
-            const txt = localStorage.getItem(SCRATCH_KEY) || '';
-            document.getElementById('scratchpad-area').value = txt;
-            document.getElementById('note-snippet').innerText = txt.substring(0, 100) || "No notes yet.";
-        }
-        function clearScratchpad() {
-            if(confirm("Clear all notes?")) {
-                document.getElementById('scratchpad-area').value = '';
-                saveScratchpad();
-            }
-        }
-
-        // Without an API, these AI Modify functions return local feedback instead
-        async function aiModifyNote(mode) {
-            const area = document.getElementById('scratchpad-area');
-            const text = area.value;
-            const loader = document.getElementById('scratchpad-loading');
-            
-            if (!text.trim()) return;
-            
-            loader.classList.remove('hidden');
-            loader.classList.add('flex');
-            
-            // Simulating API processing time locally
-            await new Promise(r => setTimeout(r, 800)); 
-            
-            let res = "";
-            if (mode === 'summarize') res = "[Local Assistant]: Summary generation requires AI. Currently running in local mode.";
-            else if (mode === 'grammar') res = "[Local Assistant]: Grammar checking requires AI. Currently running in local mode.";
-            else if (mode === 'expand') res = "[Local Assistant]: Continuing text requires AI. Currently running in local mode.";
-            
-            try {
-                if (mode === 'summarize') {
-                    area.value = text + "\n\n--- SUMMARY ---\n" + res;
-                } else if (mode === 'grammar') {
-                    area.value = text + "\n\n" + res;
-                } else if (mode === 'expand') {
-                    area.value = text + " " + res;
-                }
-                saveScratchpad();
-            } catch (e) {
-                alert("Error: " + e.message);
-            } finally {
-                loader.classList.add('hidden');
-                loader.classList.remove('flex');
-            }
-        }
-
-        // --- AI STUDIO & SYSTEM CONTROL ---
-        function parseCommand(text) {
-            const cmd = text.toLowerCase().trim();
-            if (cmd === 'open youtube') window.open('https://youtube.com', '_blank');
-            else if (cmd === 'open google') window.open('https://google.com', '_blank');
-            else if (cmd === 'open calculator') toggleModal('calc-modal');
-            else if (cmd === 'open unit converter') toggleModal('converter-modal');
-            else if (cmd === 'open scratchpad') toggleModal('scratchpad-modal');
-            else if (cmd === 'open bookmark manager') toggleModal('bookmark-modal');
-            else if (cmd === 'open app library') toggleModal('more-apps-modal');
-            else if (cmd === 'open theme manager') toggleModal('theme-modal');
-            else if (cmd.startsWith('change accent ')) {
-                const color = cmd.split('change accent ')[1];
-                const map = { blue: '#3b82f6', purple: '#6366f1', cyan: '#06b6d4', green: '#10b981', red: '#ef4444', orange: '#f59e0b' };
-                if (map[color]) setAccent(map[color]);
-            } else if (cmd.startsWith('change wallpaper ')) {
-                const type = cmd.split('change wallpaper ')[1];
-                if (['dark', 'purple', 'blue', 'black'].includes(type)) setWallpaper(type);
-            } else if (cmd.startsWith('change theme ')) {
-                const themeName = cmd.split('change theme ')[1];
-                if (themes[themeName]) applyTheme(themeName);
-            } else {
-                return false;
-            }
-            return true;
-        }
-
-        // -----------------------------------------
-        // LOCAL CODE-BASED CHATBOT REPLACEMENT 
-        // -----------------------------------------
-        async function generateAiText(prompt) {
-            const input = prompt.toLowerCase().trim();
-
-            // This is your "Brain" - add any questions and answers here!
-            const responses = {
-                "hello": "Hello! I am the System Hub offline assistant. How can I help you?",
-                "hi": "Hi there! Systems are nominal. What do you need?",
-                "who are you": "I am a rule-based chatbot running locally in your browser. No AI required!",
-                "version": "You are currently running System Hub Pro v2.0.",
-                "help": "You can ask me about the system, or use commands like 'open calculator' or 'change theme'.",
-                "creator": "This system was built to be a high-performance productivity dashboard.",
-                "thanks": "You're welcome! Let me know if you need anything else.",
-                "bye": "Goodbye! Have a productive session."
-            };
-
-            // Keyword matching logic
-            if (input.includes("weather")) return "I don't have a live weather module yet, but it looks like a great day for coding!";
-            if (input.includes("time")) return "The current system time is " + new Date().toLocaleTimeString();
-            if (input.includes("status")) return "All systems (Storage, RAM, and UI) are functioning at 100%.";
-            if (input.includes("joke")) return "Why do programmers prefer dark mode? Because light attracts bugs!";
-
-            // Return the response if found in our list, otherwise a fallback message
-            return responses[input] || "I'm not sure about that. Try asking for 'help' or check the App Library.";
-        }
-
-        // Placeholder for local image mock response
-        async function generateAiImage(prompt) {
-            alert("Image generation requires an external AI API connection. Currently running in local mode.");
-            throw new Error("Local mode active");
-        }
-
-        async function handleAiAction(type) {
-            if (type === 'chat') {
-                const input = document.getElementById('ai-input-text');
-                const btn = document.getElementById('ai-btn-chat');
-                const text = input.value.trim();
-                if (!text) return;
-                
-                appendMessage('user', text);
-                input.value = '';
-                btn.disabled = true;
-                
-                // 1. Check strict commands first
-                if (parseCommand(text)) {
-                    appendMessage('bot', `Command executed: <b>${text}</b>`);
-                    btn.disabled = false;
-                    return;
-                }
-
-                // 2. Call Local Function
-                const loadingBubble = appendMessage('bot', '<div class="spinner"></div>');
-                
-                // Added a tiny artificial delay to make it feel natural
-                setTimeout(async () => {
-                    try {
-                        const response = await generateAiText(text);
-                        const parsed = marked.parse(response);
-                        loadingBubble.innerHTML = parsed;
-                    } catch (e) { 
-                        loadingBubble.innerHTML = "Error: Local logic failed."; 
-                    } finally {
-                        btn.disabled = false;
-                    }
-                }, 300);
-            } else if (type === 'image') {
-                const input = document.getElementById('ai-input-image');
-                const btn = document.getElementById('ai-btn-image');
-                const prompt = input.value.trim();
-                if (!prompt) return;
-                
-                const loading = document.getElementById('image-loading');
-                const img = document.getElementById('generated-image');
-                const placeholder = document.getElementById('image-placeholder');
-                
-                loading.classList.remove('hidden');
-                btn.disabled = true;
-                
-                try {
-                    const dataUrl = await generateAiImage(prompt);
-                    img.src = dataUrl;
-                    img.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
-                } catch (e) { 
-                    console.error(e);
-                } finally { 
-                    loading.classList.add('hidden');
-                    btn.disabled = false;
-                }
-            }
-        }
-
-        async function generateWallpaper() {
-            const prompt = document.getElementById('wall-prompt').value;
-            if(!prompt) return;
-            const btn = document.getElementById('btn-gen-wall');
-            const originalIcon = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner w-4 h-4 border-white"></div>';
-            
-            try {
-                const dataUrl = await generateAiImage("Wallpaper, abstract, high quality, 4k, " + prompt);
-                setWallpaper(dataUrl);
-            } catch(e) {
-                console.log("Wallpaper gen requires API");
-            } finally {
-                btn.innerHTML = originalIcon;
-            }
-        }
-
-        // --- CLOCK & UTILS ---
-        function updateClock() {
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            document.getElementById('clock').innerHTML = `${hours}:${minutes}<span class="text-2xl ml-2 opacity-40 font-light">${ampm}</span>`;
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('date').innerText = now.toLocaleDateString('en-US', options);
-        }
-
-        function switchTab(tab) {
-            const cv = document.getElementById('view-chat'); const iv = document.getElementById('view-image');
-            const tc = document.getElementById('tab-chat'); const ti = document.getElementById('tab-image');
-            if (tab === 'chat') { 
-                cv.classList.remove('hidden'); iv.classList.add('hidden'); 
-                tc.className = 'px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white/10 text-white'; 
-                ti.className = 'px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white/40 hover:text-white'; 
-            } else { 
-                cv.classList.add('hidden'); iv.classList.remove('hidden'); 
-                ti.className = 'px-4 py-1.5 rounded-md text-xs font-bold transition-all bg-white/10 text-white'; 
-                tc.className = 'px-4 py-1.5 rounded-md text-xs font-bold transition-all text-white/40 hover:text-white'; 
-            }
-        }
-
-        function appendMessage(role, content) {
-            const history = document.getElementById('chat-history');
-            const div = document.createElement('div');
-            div.className = `ai-chat-bubble ${role === 'user' ? 'ai-bubble-user' : 'ai-bubble-bot'}`;
-            div.innerHTML = content;
-            history.appendChild(div);
-            history.scrollTop = history.scrollHeight;
-            return div;
-        }
-
-        // --- CALCULATOR LOGIC ---
-        let calcExpr = "";
-        const calcDisplay = document.getElementById('calc-display');
-        function calcInput(v) { if (calcExpr === "0" && v !== ".") calcExpr = ""; calcExpr += v; updateDisp(); }
-        function calcClear() { calcExpr = "0"; updateDisp(); }
-        function calcDelete() { calcExpr = calcExpr.slice(0,-1) || "0"; updateDisp(); }
-        function calcEquals() { try { const res = Function('"use strict";return (' + calcExpr + ')')(); calcExpr = String(Number(res.toFixed(4))); updateDisp(); } catch { calcDisplay.innerText = "Error"; calcExpr = ""; } }
-        function updateDisp() { calcDisplay.innerText = calcExpr || "0"; }
-
-// --- TOAST NOTIFICATIONS ---
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    
-    let icon = 'ph-info';
-    if (type === 'success') icon = 'ph-check';
-    if (type === 'error') icon = 'ph-warning';
-
-    toast.innerHTML = `
-        <div class="toast-icon"><i class="ph-bold ${icon}"></i></div>
-        <span>${message}</span>
-    `;
-    
-    container.appendChild(toast);
-    
-    // Animate in
-    setTimeout(() => toast.classList.add('show'), 10);
-    
-    // Animate out and remove after 3 seconds
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 400); 
-    }, 3000);
-}
-
-// --- VOICE CONTROL ---
-function startVoiceRecognition() {
-    // Check if the browser supports the Web Speech API (Chrome, Edge, Safari)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        showToast("Voice control is not supported in this browser.", "error");
-        return;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>⏱️ Interactive Focus Timer</title>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Spotify IFrame API -->
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+
+  <style>
+    :root {
+      --bg-blur: 0px;
+      --bg-brightness: 1;
+      --glass-bg: rgba(255, 255, 255, 0.12);
+      --glass-border: rgba(255, 255, 255, 0.2);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+      --accent: #6366f1;
+      --panel-blur: 15px;
+      --vignette: 0%;
+      --touch-target: 44px;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
 
-    const btn = document.getElementById('btn-voice');
-    const icon = btn.querySelector('i');
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      background-image: url("https://pixelz.cc/wp-content/uploads/2016/11/annapurna-massif-himalayas-nepal-4k-wallpaper.jpg");
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-attachment: fixed;
+      background-size: cover;
+      color: white;
+      overflow: hidden;
+      transition: background-image 0.8s ease-in-out;
+    }
 
-    recognition.onstart = function() {
-        icon.classList.remove('text-white/40');
-        icon.classList.add('text-red-500', 'animate-pulse'); 
-        showToast("Listening... Speak a command.", "info");
-    };
+    .bg-overlay { 
+        position: fixed; inset: 0; 
+        background: radial-gradient(circle, transparent 40%, rgba(0,0,0,var(--vignette)) 100%); 
+        z-index: 0; pointer-events: none; transition: background 0.5s;
+    }
+    .bg-control-layer {
+      position: fixed; inset: 0;
+      backdrop-filter: blur(var(--bg-blur));
+      -webkit-backdrop-filter: blur(var(--bg-blur));
+      background: rgba(0, 0, 0, calc(1 - var(--bg-brightness)));
+      z-index: 1; pointer-events: none;
+      transition: all 0.3s ease;
+    }
 
-    recognition.onresult = function(event) {
-        const transcript = event.results[0][0].transcript;
-        showToast(`Heard: "${transcript}"`, "success");
+    .realtime-clock {
+      position: fixed; top: 30px; right: 30px;
+      font-size: 16px; letter-spacing: 1px; z-index: 10; opacity: 0.9;
+    }
+
+    .glass-effect {
+      background: var(--glass-bg) !important;
+      backdrop-filter: blur(var(--panel-blur)) !important;
+      -webkit-backdrop-filter: blur(var(--panel-blur)) !important;
+      border: 1px solid var(--glass-border) !important;
+      box-shadow: var(--glass-shadow) !important;
+    }
+
+    .timer-container {
+      position: relative; z-index: 5;
+      border-radius: 40px; padding: 40px;
+      width: 440px; max-width: 92%; text-align: center;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .hidden-card { display: none !important; }
+    .app-title { font-size: 14px; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 10px; opacity: 0.8; }
+    
+    .stats-badge {
+        font-size: 11px; background: rgba(255,255,255,0.1); padding: 4px 12px; 
+        border-radius: 20px; margin-bottom: 20px; display: inline-block;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .presets-group { margin-bottom: 25px; }
+    .presets-label { font-size: 10px; text-transform: uppercase; opacity: 0.5; margin-bottom: 10px; display: block; }
+    .presets { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+    .preset-btn {
+      background: rgba(255,255,255,0.1); border: 1px solid transparent;
+      color: white; padding: 8px 16px;
+      border-radius: 12px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.3s;
+      min-height: var(--touch-target);
+    }
+    .preset-btn:hover { background: rgba(255,255,255,0.25); }
+    .preset-btn.active { background: white; color: #333; }
+    
+    .mode-switch-btn {
+      background: rgba(255,255,255,0.2); color: white;
+      border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px;
+      border-radius: 30px; cursor: pointer; font-size: 13px;
+      margin-top: 20px; transition: 0.3s; min-height: var(--touch-target);
+    }
+    .mode-switch-btn:hover { background: white; color: black; }
+
+    .progress-wrapper { position: relative; width: 220px; height: 220px; margin: 0 auto 30px; }
+    .progress-ring { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .progress-ring__circle-bg { fill: transparent; stroke: rgba(255,255,255,0.15); stroke-width: 8; }
+    .progress-ring__circle {
+      fill: transparent; stroke: var(--accent); stroke-width: 8;
+      stroke-linecap: round; stroke-dasharray: 659.73;
+      stroke-dashoffset: 0; transition: stroke-dashoffset 0.3s linear, stroke 0.3s;
+    }
+    .time-display {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 42px; font-weight: 600;
+      display: flex; gap: 2px; align-items: center;
+    }
+    .digit-btn {
+      cursor: text; transition: 0.2s; border-radius: 5px;
+      padding: 0 4px; border: 1px solid transparent; outline: none;
+      min-width: 60px; text-align: center;
+    }
+    .digit-btn:focus { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); }
+    .digit-btn:hover { background: rgba(255,255,255,0.1); }
+
+    .main-controls { display: flex; gap: 20px; justify-content: center; align-items: center; }
+    .control-btn {
+      width: 55px; height: 55px; border-radius: 50%; border: 1px solid var(--glass-border);
+      background: rgba(255,255,255,0.1); color: white; cursor: pointer; transition: 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .control-btn:hover { background: white; color: #333; transform: scale(1.1); }
+    .control-btn.main { width: 70px; height: 70px; font-size: 22px; background: rgba(255,255,255,0.25); }
+
+    /* UNIVERSAL MINIPLAYER */
+    .mini-player {
+        position: fixed; top: 30px; left: 30px; transform: none;
+        width: auto; min-width: 320px; max-width: 400px; height: 50px; z-index: 900;
+        display: flex; align-items: center; gap: 15px; padding: 0 20px;
+        border-radius: 100px; opacity: 0; pointer-events: none; transition: 0.4s;
+    }
+    .mini-player.active { opacity: 1; pointer-events: all; }
+    .mini-track-name { flex: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.95; font-weight: 500; }
+    .mini-controls { display: flex; gap: 12px; align-items: center; }
+    .mini-action { background: transparent; border: none; color: white; cursor: pointer; font-size: 16px; opacity: 0.8; transition: 0.2s; padding: 0; }
+    .mini-action:hover { opacity: 1; transform: scale(1.1); }
+    .volume-slider { width: 60px; height: 3px; accent-color: var(--accent); cursor: pointer; }
+
+    .fab-container { position: fixed; right: 30px; bottom: 30px; display: flex; flex-direction: column; gap: 12px; z-index: 1000; }
+    .fab-btn {
+      width: 48px; height: 48px; border-radius: 14px; background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
+      color: white; font-size: 18px; cursor: pointer; transition: 0.2s;
+    }
+    .fab-btn:hover { background: var(--accent); transform: translateY(-2px); }
+    .fab-btn.active { background: var(--accent); }
+
+    .side-fab-left { position: fixed; left: 30px; bottom: 30px; z-index: 1000; }
+
+    .panel {
+      position: fixed; border-radius: 24px; z-index: 100;
+      padding: 24px; transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); color: white;
+      opacity: 0; pointer-events: none; transform: translateY(20px) scale(0.95);
+    }
+    .panel.visible { opacity: 1; pointer-events: all; transform: translateY(0) scale(1); }
+    
+    .apps-panel { right: 90px; bottom: 130px; width: 220px; }
+    .tools-panel { right: 90px; bottom: 30px; width: 280px; }
+    .settings-panel { left: 90px; bottom: 30px; width: 280px; }
+
+    .menu-item {
+        display: flex; align-items: center; gap: 12px; padding: 12px;
+        border-radius: 12px; cursor: pointer; transition: 0.2s;
+        background: rgba(255,255,255,0.1); margin-bottom: 8px;
+    }
+    .menu-item:hover { background: rgba(255,255,255,0.2); }
+
+    .tool-window {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+      border-radius: 24px; padding: 30px; z-index: 1100; width: 400px; max-width: 95%;
+      opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .tool-window.visible { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+    .tool-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .drag-handle { display: none; } /* Mobile Only */
+
+    #notepadArea {
+      width: 100%; height: 250px; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 12px;
+      padding: 12px; font-size: 14px; resize: none; outline: none;
+    }
+
+    .todo-input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+    .todo-input { flex: 1; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 8px; color: white; outline: none; font-size: 14px; }
+    .todo-list { max-height: 200px; overflow-y: auto; }
+    .todo-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; }
+    .todo-item.done { opacity: 0.5; text-decoration: line-through; }
+    .todo-item i { cursor: pointer; opacity: 0.7; transition: 0.2s; }
+    .todo-item i:hover { opacity: 1; color: #ff4757; }
+
+    .ambient-list { display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+    .ambient-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); padding: 10px; border-radius: 12px; }
+    .track-info { flex: 1; overflow: hidden; }
+    .track-name { font-size: 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    .track-controls { display: flex; gap: 8px; }
+    .mini-btn { width: 32px; height: 32px; border-radius: 8px; border: none; background: rgba(255,255,255,0.1); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .mini-btn:hover { background: rgba(255,255,255,0.2); }
+    .mini-btn.active { background: var(--accent); color: #fff; }
+
+    .bg-list { max-height: 200px; overflow-y: auto; margin: 10px 0; }
+    .bg-option {
+      padding: 10px; border-radius: 8px; cursor: pointer; font-size: 13px;
+      background: rgba(255,255,255,0.1); margin-bottom: 5px; transition: 0.2s;
+    }
+    .bg-option:hover { background: rgba(255,255,255,0.2); }
+
+    .custom-bg-input {
+      width: 100%; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
+      padding: 10px; border-radius: 8px; color: white; font-size: 12px; margin-top: 5px; outline: none;
+    }
+
+    .upload-btn {
+      display: block; width: 100%; background: rgba(255,255,255,0.12); 
+      border: 1px dashed rgba(255,255,255,0.3); color: white;
+      padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 12px;
+      cursor: pointer; text-align: center; transition: 0.2s;
+    }
+    .ambience-upload-btn {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        margin-bottom: 20px;
+        margin-top: 0;
+    }
+
+    .accent-picker { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .accent-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.2); transition: 0.2s; }
+    .accent-dot.active { border-color: #fff; transform: scale(1.1); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+    /* BREATHING TOOL */
+    .breath-circle {
+        width: 180px; height: 180px; border-radius: 50%;
+        background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+        border: 2px solid var(--accent); margin: 30px auto;
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 4s cubic-bezier(0.445, 0.05, 0.55, 0.95);
+        position: relative;
+    }
+    .breath-circle::after {
+        content: ''; position: absolute; inset: -10px; border-radius: 50%;
+        border: 1px solid var(--accent); opacity: 0.3;
+    }
+    .breath-text { font-weight: 600; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; }
+    .breathing-active .breath-circle { animation: breatheCycle 16s infinite; }
+    
+    @keyframes breatheCycle {
+        0%, 100% { transform: scale(0.6); } /* Exhale */
+        25% { transform: scale(1.1); }    /* Inhale */
+        50% { transform: scale(1.1); }    /* Hold */
+        75% { transform: scale(0.6); }    /* Exhale */
+    }
+
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; font-size: 12px; }
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.2); transition: .4s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    /* STATS WINDOW */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
+    .stat-card h3 { font-size: 1.5rem; margin: 0 0 5px 0; font-weight: 600; color: var(--accent); }
+    .stat-card p { font-size: 0.7rem; text-transform: uppercase; margin: 0; opacity: 0.7; }
+    .chart-container { background: rgba(255,255,255,0.02); border-radius: 12px; padding: 15px; height: 180px; position: relative; border: 1px solid rgba(255,255,255,0.05); }
+
+    /* TOAST */
+    #toast {
+        position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-100px);
+        background: rgba(255,255,255,0.15); color: #fff; padding: 12px 24px;
+        border-radius: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(20px); z-index: 2000; transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        font-weight: 500; font-size: 14px;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    #interactionGuard {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.6); display: flex;
+      align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.3s;
+    }
+    #interactionGuard p {
+      background: white; color: black; padding: 15px 30px;
+      border-radius: 50px; font-weight: 600; font-size: 16px;
+    }
+
+    /* =========================================
+       RESPONSIVE LOGIC: DESKTOP
+       ========================================= */
+    @media (pointer: fine) and (min-width: 1024px) {
+        .preset-btn:hover, .control-btn:hover, .fab-btn:hover, .menu-item:hover, .mini-btn:hover {
+            box-shadow: 0 0 15px rgba(255,255,255,0.1);
+        }
+    }
+
+    /* =========================================
+       RESPONSIVE LOGIC: MOBILE (Bottom Sheets)
+       ========================================= */
+    @media (pointer: coarse) and (max-width: 767px), (max-width: 639px) {
+        .timer-container { width: 92% !important; padding: 30px 20px !important; }
+        .realtime-clock { top: 20px; right: 20px; font-size: 14px; }
+        .progress-wrapper { width: 180px; height: 180px; }
+        .progress-ring__circle, .progress-ring__circle-bg { r: 85; cx: 90; cy: 90; }
+        .time-display { font-size: 36px; }
+
+        /* Convert Panels to Bottom Sheets */
+        .panel, .tool-window {
+            top: auto !important; bottom: 0 !important; left: 0 !important;
+            transform: translateY(100%) !important;
+            width: 100% !important; max-width: 100% !important;
+            border-radius: 24px 24px 0 0 !important;
+            max-height: 85vh; overflow-y: auto;
+            border: none !important; border-top: 1px solid rgba(255,255,255,0.2) !important;
+        }
+        .panel.visible, .tool-window.visible { transform: translateY(0) !important; }
+
+        /* Mobile Drag Handle */
+        .drag-handle {
+            display: block; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 5px; border-radius: 10px; background: rgba(255,255,255,0.3);
+        }
+        .tool-header { padding-top: 20px; margin-bottom: 15px; position: relative; }
         
-        // Put the spoken text into the search bar visually
-        document.getElementById('global-search').value = transcript;
+        /* Adjust FABs */
+        .fab-container { bottom: 90px; right: 20px; }
+        .side-fab-left { bottom: 90px; left: 20px; }
+        .mini-player { top: 20px; bottom: auto; left: 20px; min-width: 200px; max-width: calc(100vw - 120px); }
+    }
+  </style>
+</head>
+<body onclick="handleGlobalClick(event)">
+
+  <div id="interactionGuard" onclick="initAudioEngine()">
+    <p><i class="fas fa-volume-up"></i> Click to Enable Audio & Start</p>
+  </div>
+
+  <!-- Background Layers -->
+  <div class="bg-overlay"></div>
+  <div class="bg-control-layer" id="bgLayer"></div>
+  <div class="realtime-clock" id="realtimeClock">12:00 PM</div>
+  <div id="toast">Ready to focus!</div>
+
+  <!-- TIMER CARDS -->
+  <div id="defaultCard" class="timer-container glass-effect clickable-feature">
+    <div class="app-title">Main Timer</div>
+    <div class="stats-badge"><i class="fas fa-bolt"></i> <span id="sessionCount">0</span> Sessions Today</div>
+    
+    <div class="presets-group">
+      <span class="presets-label">Rest Periods</span>
+      <div class="presets">
+        <button class="preset-btn" onclick="setPreset(5, this)">Short Break</button>
+        <button class="preset-btn" onclick="setPreset(15, this)">Long Break</button>
+      </div>
+    </div>
+    <div class="progress-wrapper">
+      <svg class="progress-ring" width="100%" height="100%"><circle class="progress-ring__circle-bg" r="105" cx="110" cy="110"/><circle class="progress-ring__circle" id="progressCircleDefault" r="105" cx="110" cy="110"/></svg>
+      <div class="time-display">
+        <span class="digit-btn" contenteditable="true" onkeydown="handleEnterKey(event)" onblur="manualTimeUpdate()">00</span>:
+        <span class="digit-btn" contenteditable="true" onkeydown="handleEnterKey(event)" onblur="manualTimeUpdate()">00</span>
+      </div>
+    </div>
+    <div class="main-controls">
+      <button class="control-btn" onclick="resetTimer()"><i class="fas fa-trash-can"></i></button>
+      <button class="control-btn main" onclick="toggleTimer()"><i class="fas fa-play" id="playIconDefault"></i></button>
+    </div>
+    <button class="mode-switch-btn" onclick="switchCard('pomodoroCard')"><i class="fas fa-brain"></i> Pomodoro Mode</button>
+  </div>
+
+  <div id="pomodoroCard" class="timer-container glass-effect hidden-card clickable-feature">
+    <button class="mode-switch-btn" style="margin-top:0; margin-bottom:10px;" onclick="switchCard('defaultCard')"><i class="fas fa-arrow-left"></i> Back</button>
+    <div class="app-title">Pomodoro Focus</div>
+    <div class="stats-badge"><i class="fas fa-bolt"></i> <span id="pomoCount">0</span> Completed</div>
+    
+    <div class="presets-group">
+      <span class="presets-label">Focus Sessions</span>
+      <div class="presets">
+        <button class="preset-btn active" onclick="setPreset(25, this)">25m Focus</button>
+        <button class="preset-btn" onclick="setPreset(60, this)">1h Focus</button>
+      </div>
+    </div>
+    <div class="progress-wrapper">
+      <svg class="progress-ring" width="100%" height="100%"><circle class="progress-ring__circle-bg" r="105" cx="110" cy="110"/><circle class="progress-ring__circle" id="progressCirclePomo" r="105" cx="110" cy="110"/></svg>
+      <div class="time-display">
+        <span class="digit-btn" contenteditable="true" onkeydown="handleEnterKey(event)" onblur="manualTimeUpdate()">25</span>:
+        <span class="digit-btn" contenteditable="true" onkeydown="handleEnterKey(event)" onblur="manualTimeUpdate()">00</span>
+      </div>
+    </div>
+    <div class="main-controls">
+      <button class="control-btn" onclick="resetTimer()"><i class="fas fa-trash-can"></i></button>
+      <button class="control-btn main" onclick="toggleTimer()"><i class="fas fa-play" id="playIconPomo"></i></button>
+    </div>
+  </div>
+
+  <!-- PANELS -->
+  <div id="appsPanel" class="panel glass-effect apps-panel clickable-feature swipeable">
+    <div class="drag-handle"></div>
+    <div style="font-size: 11px; text-transform: uppercase; opacity: 0.5; margin-bottom: 12px; margin-top: 10px;">Apps & Tools</div>
+    <div class="menu-item" onclick="openTool('statsWindow')"><i class="fas fa-chart-line"></i> <span>Statistics</span></div>
+    <div class="menu-item" onclick="openTool('spotifyWindow')"><i class="fab fa-spotify"></i> <span>Spotify Embed</span></div>
+    <div class="menu-item" onclick="openTool('notepadWindow')"><i class="fas fa-sticky-note"></i> <span>Notepad</span></div>
+    <div class="menu-item" onclick="openTool('todoWindow')"><i class="fas fa-check-double"></i> <span>To-Do List</span></div>
+    <div class="menu-item" onclick="openTool('ambientWindow')"><i class="fas fa-music"></i> <span>Ambient Sounds</span></div>
+    <div class="menu-item" onclick="openTool('breathWindow')"><i class="fas fa-wind"></i> <span>Breathing Coach</span></div>
+  </div>
+
+  <div id="toolsPanel" class="panel glass-effect tools-panel clickable-feature swipeable">
+    <div class="drag-handle"></div>
+    <div style="font-weight: 600; margin-bottom: 5px; margin-top: 10px;">Backgrounds</div>
+    <div id="bgPicker" class="bg-list"></div>
+    <input type="text" class="custom-bg-input" placeholder="Paste image URL here..." onchange="setCustomBackground(this.value)">
+    <label class="upload-btn">
+      <i class="fas fa-upload"></i> Local Image
+      <input type="file" hidden accept="image/*" onchange="handleLocalImage(event)">
+    </label>
+  </div>
+
+  <div id="settingsPanel" class="panel glass-effect settings-panel clickable-feature swipeable">
+    <div class="drag-handle"></div>
+    <div style="font-size: 14px; margin-bottom: 15px; margin-top: 10px;">Interface & Settings</div>
+    
+    <div style="font-size: 12px; margin-bottom: 5px;">Accent Color</div>
+    <div class="accent-picker">
+        <div class="accent-dot active" style="background: #6366f1;" onclick="setAccent('#6366f1', this)"></div>
+        <div class="accent-dot" style="background: #ffffff;" onclick="setAccent('#ffffff', this)"></div>
+        <div class="accent-dot" style="background: #ef4444;" onclick="setAccent('#ef4444', this)"></div>
+        <div class="accent-dot" style="background: #10b981;" onclick="setAccent('#10b981', this)"></div>
+        <div class="accent-dot" style="background: #f59e0b;" onclick="setAccent('#f59e0b', this)"></div>
+        <div class="accent-dot" style="background: #ec4899;" onclick="setAccent('#ec4899', this)"></div>
+    </div>
+
+    <div style="font-size: 12px; margin-top: 15px; margin-bottom: 5px;">Brightness</div>
+    <input type="range" min="0.2" max="1" step="0.1" value="1" oninput="setBrightness(this.value)" style="width:100%;">
+    
+    <div style="font-size: 12px; margin-top: 15px; margin-bottom: 5px;">Blur Background</div>
+    <input type="range" min="0" max="20" step="1" value="0" oninput="setBlur(this.value)" style="width:100%;">
+
+    <div class="toggle-row">
+        <span>Vignette (Focus Shadow)</span>
+        <label class="switch">
+            <input type="checkbox" onchange="toggleVignette(this.checked)">
+            <span class="slider"></span>
+        </label>
+    </div>
+    <div class="toggle-row">
+        <span>Browser Notifications</span>
+        <label class="switch">
+            <input type="checkbox" id="notifToggle" onchange="toggleNotifications(this.checked)">
+            <span class="slider"></span>
+        </label>
+    </div>
+  </div>
+
+  <!-- TOOL WINDOWS -->
+  
+  <!-- Stats Window -->
+  <div id="statsWindow" class="tool-window glass-effect clickable-feature swipeable">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;">Productivity Stats</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('statsWindow')"></i>
+    </div>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3 id="statTodayMins">0m</h3>
+            <p>Focus Today</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="statTotalSessions">0</h3>
+            <p>Total Sessions</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="statStreak">0</h3>
+            <p>Day Streak</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="statLongest">0</h3>
+            <p>Longest Streak</p>
+        </div>
+    </div>
+    <div class="chart-container" id="chartContainer">
+        <p style="text-align:center; font-size:12px; opacity:0.5; margin-top:50px;">Loading Graph...</p>
+    </div>
+  </div>
+
+  <!-- Spotify Window -->
+  <div id="spotifyWindow" class="tool-window glass-effect clickable-feature swipeable">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;"><i class="fab fa-spotify" style="color:#1DB954;"></i> Spotify Embed</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('spotifyWindow')"></i>
+    </div>
+    <input type="text" id="spotifyUrl" class="custom-bg-input" placeholder="Paste Spotify Playlist/Album URL...">
+    <button class="preset-btn" style="width:100%; margin-top:10px;" onclick="loadSpotify()">Load Embed</button>
+    <div id="spotifyEmbedContainer" style="display:none; margin-top:15px; border-radius:12px; overflow:hidden;">
+        <div id="spotifyEmbed"></div>
+    </div>
+  </div>
+
+  <div id="notepadWindow" class="tool-window glass-effect clickable-feature swipeable">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;">Notepad</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('notepadWindow')"></i>
+    </div>
+    <textarea id="notepadArea" placeholder="Type here..." oninput="saveNote()"></textarea>
+  </div>
+
+  <div id="todoWindow" class="tool-window glass-effect clickable-feature swipeable">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;">To-Do List</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('todoWindow')"></i>
+    </div>
+    <div class="todo-input-group">
+        <input type="text" id="todoInput" class="todo-input" placeholder="Add new task..." onkeydown="if(event.key==='Enter') addTodo()">
+        <button class="preset-btn" onclick="addTodo()" style="padding: 0 15px;"><i class="fas fa-plus"></i></button>
+    </div>
+    <div id="todoList" class="todo-list"></div>
+  </div>
+
+  <div id="ambientWindow" class="tool-window glass-effect clickable-feature swipeable">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;">Custom Ambience</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('ambientWindow')"></i>
+    </div>
+    <label class="upload-btn ambience-upload-btn">
+      <i class="fas fa-plus-circle"></i> Add Sound Track
+      <input type="file" hidden accept="audio/*" onchange="addLocalSound(event)">
+    </label>
+    <div id="ambientList" class="ambient-list"></div>
+  </div>
+
+  <div id="breathWindow" class="tool-window glass-effect clickable-feature swipeable" style="width: 320px;">
+    <div class="tool-header">
+        <div class="drag-handle"></div>
+        <div style="font-weight: 600;">Breathing Coach</div>
+        <i class="fas fa-times" style="cursor:pointer;" onclick="closeFeature('breathWindow')"></i>
+    </div>
+    <p style="font-size: 11px; opacity: 0.6; text-align: center;">4s In • 4s Hold • 4s Out • 4s Hold</p>
+    <div id="breathContainer" class="breathing-active">
+        <div class="breath-circle">
+            <div id="breathText" class="breath-text">IN</div>
+        </div>
+    </div>
+    <button class="mode-switch-btn" id="breathToggle" style="width: 100%;" onclick="toggleBreathing()">Stop Exercise</button>
+  </div>
+
+  <!-- UNIVERSAL MEDIA PLAYER (Replaces local-only Mini Player) -->
+  <div id="miniPlayer" class="mini-player glass-effect">
+    <i id="playerModeIcon" class="fas fa-music" style="font-size:14px; opacity:0.8;"></i>
+    <div id="miniTrackName" class="mini-track-name">Not Playing</div>
+    <div class="mini-controls">
+        <button class="mini-action" onclick="toggleUniversalPlay()"><i id="miniPlayIcon" class="fas fa-play"></i></button>
+        <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.1" value="0.5" oninput="setGlobalVolume(this.value)">
+        <button class="mini-action" onclick="openActivePlayerWindow()" title="Expand Player"><i class="fas fa-expand-alt"></i></button>
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div class="fab-container">
+    <button class="fab-btn" id="appsBtn" onclick="togglePanel('appsPanel', 'appsBtn')"><i class="fas fa-th-large"></i></button>
+    <button class="fab-btn" id="toolsBtn" onclick="togglePanel('toolsPanel', 'toolsBtn')"><i class="fas fa-image"></i></button>
+    <button class="fab-btn" onclick="toggleFullScreen()"><i class="fas fa-expand"></i></button>
+  </div>
+  <button class="fab-btn side-fab-left" id="settingsBtn" onclick="togglePanel('settingsPanel', 'settingsBtn')"><i class="fas fa-cog"></i></button>
+
+  <script>
+    // --- ADVANCED DEVICE DETECTION ---
+    let DEVICE = { type: 'desktop', isTouch: false };
+    function detectDevice() {
+        const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+        const width = window.innerWidth;
+        DEVICE.isTouch = hasTouch;
+
+        if ((isCoarse || hasTouch) && width < 640) DEVICE.type = 'mobile';
+        else if (width >= 640 && width < 1024) DEVICE.type = 'tablet';
+        else DEVICE.type = 'desktop';
+
+        document.body.className = `device-${DEVICE.type}`;
         
-        // 1. Check if it's a direct system command (like "open calculator")
-        if (!parseCommand(transcript)) {
-            // 2. If it's not a system command, automatically ask the Local Bot
-            toggleModal('ai-modal');
-            switchTab('chat');
-            document.getElementById('ai-input-text').value = transcript;
-            handleAiAction('chat');
+        // Recalculate SVG ring radiuses on mobile sizing
+        const rings = document.querySelectorAll('.progress-ring__circle, .progress-ring__circle-bg');
+        if (DEVICE.type === 'mobile') {
+            rings.forEach(r => { r.setAttribute('r', '85'); r.setAttribute('cx', '90'); r.setAttribute('cy', '90'); });
+        } else {
+            rings.forEach(r => { r.setAttribute('r', '105'); r.setAttribute('cx', '110'); r.setAttribute('cy', '110'); });
         }
-    };
+        updateDisplay(totalSeconds); // Force recalculation of offset
+    }
+    window.addEventListener('resize', detectDevice);
 
-    recognition.onerror = function(event) {
-        if (event.error !== 'no-speech') {
-            showToast("Voice error: " + event.error, "error");
-        }
-    };
-
-    recognition.onend = function() {
-        // Reset mic icon
-        icon.classList.remove('text-red-500', 'animate-pulse');
-        icon.classList.add('text-white/40');
-    };
-
-    recognition.start();
-}
-    </script>
-
-     <!-- ========================================== -->
-    <!-- COPY-PASTE CURSOR EFFECT START -->
-    <!-- You can copy this entire block into any HTML file -->
-    <!-- ========================================== -->
-    <style>
-        /* Hide default cursor */
-        *, *::before, *::after {
-            cursor: none !important;
-        }
-
-        .custom-cursor-dot,
-        .custom-cursor-outline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%);
-            border-radius: 50%;
-            z-index: 999999;
-            pointer-events: none;
-        }
-
-        .custom-cursor-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #ffffff; /* White color */
-            transition: transform 0.15s ease-out;
-        }
-
-        .custom-cursor-outline {
-            width: 32px;
-            height: 32px;
-            border: 2px solid rgba(255, 255, 255, 0.5); /* White transparent */
-            transition: width 0.2s ease-out, height 0.2s ease-out, background-color 0.2s ease-out;
-        }
-
-        /* Hover effect state */
-        .custom-cursor-outline.cursor-hover {
-            width: 50px;
-            height: 50px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.8);
-        }
-    </style>
-
-    <div class="custom-cursor-dot" id="cursor-dot"></div>
-    <div class="custom-cursor-outline" id="cursor-outline"></div>
-
-    <script>
-        const cursorDot = document.getElementById('cursor-dot');
-        const cursorOutline = document.getElementById('cursor-outline');
-
-        let mouseX = window.innerWidth / 2;
-        let mouseY = window.innerHeight / 2;
-        let outlineX = mouseX;
-        let outlineY = mouseY;
-
-        // Track mouse position
-        window.addEventListener('mousemove', (e) => {
-            mouseX = e.clientX;
-            mouseY = e.clientY;
-            
-            // Dot follows instantly
-            cursorDot.style.left = `${mouseX}px`;
-            cursorDot.style.top = `${mouseY}px`;
-        });
-
-        // Smooth follow animation for outline
-        function animateCursor() {
-            let distX = mouseX - outlineX;
-            let distY = mouseY - outlineY;
-            
-            outlineX += distX * 0.15; // Speed of the trailing effect (0.1 to 1)
-            outlineY += distY * 0.15;
-            
-            cursorOutline.style.left = `${outlineX}px`;
-            cursorOutline.style.top = `${outlineY}px`;
-            
-            requestAnimationFrame(animateCursor);
-        }
-        animateCursor();
-
-        // Event delegation for hover states (works with dynamically added elements)
-        document.addEventListener('mouseover', (e) => {
-            if (e.target.closest('a, button, input, [onclick], i')) {
-                cursorOutline.classList.add('cursor-hover');
-                cursorDot.style.transform = 'translate(-50%, -50%) scale(0.5)';
+    // --- SWIPE DOWN TO CLOSE (MOBILE) ---
+    let dragStartY = 0;
+    document.querySelectorAll('.swipeable').forEach(el => {
+        el.addEventListener('touchstart', e => {
+            if (DEVICE.type !== 'mobile') return;
+            // Only initiate swipe on the header area
+            if (e.target.closest('.tool-header') || e.target.closest('.drag-handle')) {
+                dragStartY = e.touches[0].clientY;
+                el.style.transition = 'none';
             }
-        });
+        }, {passive: true});
+        
+        el.addEventListener('touchmove', e => {
+            if (DEVICE.type !== 'mobile' || dragStartY === 0) return;
+            let currentY = e.touches[0].clientY;
+            let diff = currentY - dragStartY;
+            if (diff > 0) el.style.transform = `translateY(${diff}px)`;
+        }, {passive: true});
 
-        document.addEventListener('mouseout', (e) => {
-            if (e.target.closest('a, button, input, [onclick], i')) {
-                cursorOutline.classList.remove('cursor-hover');
-                cursorDot.style.transform = 'translate(-50%, -50%) scale(1)';
+        el.addEventListener('touchend', e => {
+            if (DEVICE.type !== 'mobile' || dragStartY === 0) return;
+            let diff = e.changedTouches[0].clientY - dragStartY;
+            el.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
+            if (diff > 80) closeAllFeatures();
+            else el.style.transform = 'translateY(0)';
+            dragStartY = 0;
+        });
+    });
+
+    // --- KEYBOARD SHORTCUTS ---
+    document.addEventListener('keydown', e => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('digit-btn')) return;
+        if (e.code === 'Space') { e.preventDefault(); toggleTimer(); }
+        if (e.code === 'KeyR') resetTimer();
+    });
+
+    // --- WAKE LOCK API ---
+    let wakeLock = null;
+    async function manageWakeLock(lock) {
+        try {
+            if (lock && !wakeLock && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+            else if (!lock && wakeLock) { await wakeLock.release(); wakeLock = null; }
+        } catch (e) {}
+    }
+
+    // --- GLOBAL VARIABLES ---
+    let interval = null;
+    let totalSeconds = 25 * 60; 
+    let initialTime = 25 * 60;
+    let isRunning = false;
+    let currentMode = 'defaultCard'; 
+    let audioCtx = null;
+    let sessionsCompleted = parseInt(localStorage.getItem('focus_sessions_today') || '0');
+    let breathInterval = null;
+
+    // --- ADVANCED STATS TRACKING ---
+    let STATS = JSON.parse(localStorage.getItem('focusSuite_stats')) || { history: {}, totalSessions: 0, currentStreak: 0, longestStreak: 0, lastActiveDate: null };
+    
+    function getTodayString() {
+        const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function recordAdvancedStats(mins) {
+        const todayStr = getTodayString();
+        if (STATS.lastActiveDate !== todayStr) {
+            const y = new Date(); y.setDate(y.getDate() - 1);
+            const yStr = `${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,'0')}-${String(y.getDate()).padStart(2,'0')}`;
+            STATS.currentStreak = (STATS.lastActiveDate === yStr) ? STATS.currentStreak + 1 : 1;
+            STATS.longestStreak = Math.max(STATS.longestStreak, STATS.currentStreak);
+            STATS.lastActiveDate = todayStr;
+        }
+
+        if (!STATS.history[todayStr]) STATS.history[todayStr] = { minutes: 0, sessions: 0 };
+        STATS.history[todayStr].minutes += mins;
+        STATS.history[todayStr].sessions += 1;
+        STATS.totalSessions++;
+        localStorage.setItem('focusSuite_stats', JSON.stringify(STATS));
+    }
+
+    let isChartLoaded = false;
+    function renderStatsLazy() {
+        if (isChartLoaded && window.Chart) { drawChart(); }
+        else {
+            const s = document.createElement('script');
+            s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+            s.onload = () => {
+                isChartLoaded = true;
+                document.getElementById('chartContainer').innerHTML = '<canvas id="weeklyChart"></canvas>';
+                drawChart();
+            };
+            document.head.appendChild(s);
+        }
+    }
+
+    let chartInstance = null;
+    function drawChart() {
+        const todayStr = getTodayString();
+        const td = STATS.history[todayStr] || { minutes: 0, sessions: 0 };
+        
+        document.getElementById('statTodayMins').textContent = `${td.minutes}m`;
+        document.getElementById('statTotalSessions').textContent = STATS.totalSessions;
+        document.getElementById('statStreak').textContent = STATS.currentStreak;
+        document.getElementById('statLongest').textContent = STATS.longestStreak;
+
+        const labels = [], data = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            labels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
+            data.push(STATS.history[dStr] ? STATS.history[dStr].minutes : 0);
+        }
+
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Focus Mins', data, borderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent'), backgroundColor: 'rgba(255,255,255,0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.6)' } }, x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.6)' } } } }
+        });
+    }
+
+    // --- UNIVERSAL MEDIA PLAYER LOGIC ---
+    let activeSource = 'none'; // 'local' or 'spotify'
+    let spotifyController = null;
+    let spotifyApiReady = false;
+    let activeAudios = {}; 
+    let currentPlayingId = null;
+
+    window.onSpotifyIframeApiReady = (IFrameAPI) => {
+        spotifyApiReady = true;
+        window.SpotifyIFrameAPI = IFrameAPI;
+    };
+
+    function loadSpotify() {
+        const url = document.getElementById('spotifyUrl').value;
+        let uri = '';
+        
+        // Parse standard URLs into Spotify URIs
+        if (url.includes('spotify.com')) {
+            const match = url.match(/(track|playlist|album|episode|show)\/([a-zA-Z0-9]+)/);
+            if (match) uri = `spotify:${match[1]}:${match[2]}`;
+            else { showToast("Could not recognize Spotify link."); return; }
+        } else if (url.startsWith('spotify:')) {
+            uri = url;
+        } else {
+            showToast("Invalid Spotify URL.");
+            return;
+        }
+
+        if (!spotifyApiReady) {
+            showToast("Spotify connecting... please click load again in a moment.");
+            return;
+        }
+
+        // Pause Local Audio if switching to Spotify
+        Object.values(activeAudios).forEach(a => a.pause());
+        activeSource = 'spotify';
+
+        if (spotifyController) {
+            spotifyController.loadUri(uri);
+            updateUniversalPlayer('spotify', 'Ready - Click Spotify to play', true);
+            document.getElementById('spotifyEmbedContainer').style.display = 'block';
+        } else {
+            const element = document.getElementById('spotifyEmbed');
+            const options = {
+                uri: uri,
+                width: '100%',
+                height: '352',
+                theme: '0'
+            };
+            const callback = (EmbedController) => {
+                spotifyController = EmbedController;
+                document.getElementById('spotifyEmbedContainer').style.display = 'block';
+                
+                EmbedController.addListener('playback_update', e => {
+                    // Safe parsing of the robust e.data payload
+                    if (e.data) {
+                        // Auto-pause local audio if native Spotify starts playing
+                        if (!e.data.isPaused && activeSource !== 'spotify') {
+                            Object.values(activeAudios).forEach(a => a.pause());
+                        }
+                        activeSource = 'spotify';
+                        
+                        let trackName = 'Spotify';
+                        if (e.data.track && e.data.track.name) {
+                            let subName = "";
+                            if (e.data.track.artists && e.data.track.artists.length > 0) {
+                                subName = e.data.track.artists[0].name;
+                            } else if (e.data.track.show && e.data.track.show.name) {
+                                subName = e.data.track.show.name; // For Podcasts
+                            }
+                            trackName = e.data.track.name + (subName ? " - " + subName : "");
+                        }
+                        updateUniversalPlayer('spotify', trackName, e.data.isPaused);
+                    }
+                });
+                
+                EmbedController.addListener('ready', () => {
+                    // Do not auto-play to avoid modern browser silent failures. 
+                    // Let the user initiate playback via the UI.
+                    updateUniversalPlayer('spotify', 'Ready - Click Spotify to play', true);
+                });
+            };
+            window.SpotifyIFrameAPI.createController(element, options, callback);
+        }
+        
+        // Optimistic UI Update before iframe completes load
+        updateUniversalPlayer('spotify', 'Loading Spotify Embed...', true);
+    }
+
+    function updateUniversalPlayer(source, trackName = '', isPaused = true) {
+        const player = document.getElementById('miniPlayer');
+        const trackDisplay = document.getElementById('miniTrackName');
+        const playIcon = document.getElementById('miniPlayIcon');
+        const volSlider = document.getElementById('volumeSlider');
+        const modeIcon = document.getElementById('playerModeIcon');
+
+        if (source === 'none') {
+            player.classList.remove('active');
+            return;
+        }
+
+        player.classList.add('active');
+        playIcon.className = isPaused ? 'fas fa-play' : 'fas fa-pause';
+        trackDisplay.innerText = trackName;
+
+        if (source === 'spotify') {
+            modeIcon.className = 'fab fa-spotify';
+            modeIcon.style.color = '#1DB954';
+            volSlider.style.display = 'none'; // Spotify API doesn't support programmatic volume control
+        } else if (source === 'local') {
+            modeIcon.className = 'fas fa-music';
+            modeIcon.style.color = 'inherit';
+            volSlider.style.display = 'inline-block';
+        }
+    }
+
+    function toggleUniversalPlay() {
+        if (activeSource === 'spotify' && spotifyController) {
+            spotifyController.togglePlay();
+        } else if (activeSource === 'local') {
+            toggleActiveSound();
+        }
+    }
+
+    function openActivePlayerWindow() {
+        closeAllFeatures();
+        if (activeSource === 'spotify') openTool('spotifyWindow');
+        else openTool('ambientWindow');
+    }
+
+    // --- NOTIFICATIONS ---
+    function toggleNotifications(isOn) {
+        if (isOn && "Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    }
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+    }
+    function sendBrowserNotification(title, body) {
+        const isOn = document.getElementById('notifToggle').checked;
+        if (isOn && "Notification" in window && Notification.permission === "granted") {
+            new Notification(title, { body, icon: "https://cdn-icons-png.flaticon.com/512/3554/3554165.png" });
+        }
+    }
+
+    // Database setup for local audio
+    let db = null;
+    const initDB = () => {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("FocusSuiteDB", 1);
+            request.onupgradeneeded = (e) => {
+                db = e.target.result;
+                db.createObjectStore("sounds", { keyPath: "id", autoIncrement: true });
+            };
+            request.onsuccess = (e) => {
+                db = e.target.result;
+                resolve();
+            };
+            request.onerror = reject;
+        });
+    };
+
+    const saveSoundToDB = (name, blob) => {
+        const transaction = db.transaction(["sounds"], "readwrite");
+        const store = transaction.objectStore("sounds");
+        store.add({ name, blob });
+        setTimeout(renderAmbientList, 100);
+    };
+
+    const getSoundsFromDB = () => {
+        return new Promise((resolve) => {
+            if (!db) return resolve([]);
+            const transaction = db.transaction(["sounds"], "readonly");
+            const store = transaction.objectStore("sounds");
+            const request = store.getAll();
+            request.onsuccess = () => resolve(request.result);
+        });
+    };
+
+    const deleteSoundFromDB = (id) => {
+        const transaction = db.transaction(["sounds"], "readwrite");
+        transaction.objectStore("sounds").delete(id);
+        if (activeAudios[id]) {
+            activeAudios[id].pause();
+            if (currentPlayingId === id) {
+                currentPlayingId = null;
+                syncLocalPlayerUI();
             }
-        });
-    </script>
-    <!-- ========================================== -->
-    <!-- COPY-PASTE CURSOR EFFECT END -->
-    <!-- ========================================== -->
+            delete activeAudios[id];
+        }
+        setTimeout(renderAmbientList, 100);
+    };
 
+    function handleGlobalClick(e) {
+        if (!e.target.closest('.clickable-feature') && !e.target.closest('.fab-btn') && !e.target.closest('.mini-player') && !e.target.closest('#toast')) {
+            closeAllFeatures();
+        }
+    }
+
+    function closeAllFeatures() {
+        document.querySelectorAll('.panel, .tool-window').forEach(el => {
+            el.classList.remove('visible');
+            el.style.transform = ''; // reset mobile swipe translate
+        });
+        document.querySelectorAll('.fab-btn').forEach(btn => btn.classList.remove('active'));
+    }
+
+    function closeFeature(id) {
+        const el = document.getElementById(id);
+        el.classList.remove('visible');
+        el.style.transform = '';
+    }
+
+    function togglePanel(id, btnId) {
+        const p = document.getElementById(id);
+        const btn = document.getElementById(btnId);
+        const isVisible = p.classList.contains('visible');
+        closeAllFeatures();
+        if (!isVisible) {
+            p.classList.add('visible');
+            if(btn) btn.classList.add('active');
+        }
+    }
+
+    function openTool(id) {
+        document.getElementById('appsPanel').classList.remove('visible');
+        document.getElementById('appsBtn').classList.remove('active');
+        document.getElementById(id).classList.add('visible');
+        if (id === 'breathWindow') startBreathingText();
+        if (id === 'statsWindow') renderStatsLazy();
+    }
+
+    // --- STATS ---
+    function incrementSessions() {
+        sessionsCompleted++;
+        localStorage.setItem('focus_sessions_today', sessionsCompleted);
+        updateStatsDisplay();
+    }
+
+    function updateStatsDisplay() {
+        document.getElementById('sessionCount').innerText = sessionsCompleted;
+        document.getElementById('pomoCount').innerText = sessionsCompleted;
+    }
+
+    // --- BREATHING ---
+    function startBreathingText() {
+        if (breathInterval) clearInterval(breathInterval);
+        const text = document.getElementById('breathText');
+        const phrases = ["IN", "HOLD", "OUT", "HOLD"];
+        let i = 0;
+        text.innerText = phrases[0];
+        breathInterval = setInterval(() => {
+            i = (i + 1) % 4;
+            text.innerText = phrases[i];
+        }, 4000);
+    }
+
+    function toggleBreathing() {
+        const container = document.getElementById('breathContainer');
+        const btn = document.getElementById('breathToggle');
+        if (container.classList.contains('breathing-active')) {
+            container.classList.remove('breathing-active');
+            clearInterval(breathInterval);
+            btn.innerText = "Start Exercise";
+        } else {
+            container.classList.add('breathing-active');
+            startBreathingText();
+            btn.innerText = "Stop Exercise";
+        }
+    }
+
+    // --- NOTEPAD ---
+    function saveNote() { localStorage.setItem('focusSuite_note', document.getElementById('notepadArea').value); }
+    function loadNote() {
+      const saved = localStorage.getItem('focusSuite_note');
+      if (saved !== null) document.getElementById('notepadArea').value = saved;
+    }
+
+    // --- TODO LIST ---
+    let todos = JSON.parse(localStorage.getItem('focusSuite_todos') || '[]');
+    function renderTodos() {
+        const list = document.getElementById('todoList');
+        list.innerHTML = '';
+        todos.forEach((todo, index) => {
+            const div = document.createElement('div');
+            div.className = `todo-item ${todo.done ? 'done' : ''}`;
+            div.innerHTML = `
+                <input type="checkbox" ${todo.done ? 'checked' : ''} onclick="toggleTodo(${index})">
+                <span style="flex:1">${todo.text}</span>
+                <i class="fas fa-trash" onclick="removeTodo(${index})"></i>
+            `;
+            list.appendChild(div);
+        });
+        localStorage.setItem('focusSuite_todos', JSON.stringify(todos));
+    }
+
+    function addTodo() {
+        const input = document.getElementById('todoInput');
+        if (!input.value.trim()) return;
+        todos.push({ text: input.value.trim(), done: false });
+        input.value = '';
+        renderTodos();
+    }
+
+    function toggleTodo(index) {
+        todos[index].done = !todos[index].done;
+        renderTodos();
+    }
+
+    function removeTodo(index) {
+        todos.splice(index, 1);
+        renderTodos();
+    }
+
+    // --- AMBIENT FOCUS & LOCAL PLAYER ---
+    async function addLocalSound(event) {
+        const file = event.target.files[0];
+        if (file) saveSoundToDB(file.name, file);
+    }
+
+    async function renderAmbientList() {
+        const container = document.getElementById('ambientList');
+        const sounds = await getSoundsFromDB();
+        
+        if (sounds.length === 0) {
+            container.innerHTML = '<div style="font-size: 11px; opacity: 0.6; text-align: center; margin-top: 20px;">No sounds added yet.</div>';
+            return;
+        }
+
+        container.innerHTML = '';
+        sounds.forEach(sound => {
+            const row = document.createElement('div');
+            row.className = 'ambient-row';
+            const isPlaying = activeSource === 'local' && currentPlayingId === sound.id && !activeAudios[sound.id].paused;
+            row.innerHTML = `
+                <div class="track-info">
+                    <div class="track-name">${sound.name}</div>
+                </div>
+                <div class="track-controls">
+                    <button class="mini-btn ${isPlaying ? 'active' : ''}" onclick="togglePlay(${sound.id})">
+                        <i class="fas ${isPlaying ? 'fa-pause' : 'fa-play'}"></i>
+                    </button>
+                    <button class="mini-btn" onclick="deleteSoundFromDB(${sound.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+        syncLocalPlayerUI();
+    }
+
+    async function togglePlay(id) {
+        // Pause Spotify if active
+        if (activeSource === 'spotify' && spotifyController) {
+            try { spotifyController.pause(); } catch(e) {}
+        }
+        activeSource = 'local';
+
+        Object.keys(activeAudios).forEach(key => {
+            if (parseInt(key) !== id) activeAudios[key].pause();
+        });
+
+        if (activeAudios[id]) {
+            if (activeAudios[id].paused) {
+                activeAudios[id].play();
+                currentPlayingId = id;
+            } else {
+                activeAudios[id].pause();
+            }
+        } else {
+            const transaction = db.transaction(["sounds"], "readonly");
+            const store = transaction.objectStore("sounds");
+            const request = store.get(id);
+            request.onsuccess = () => {
+                const sound = request.result;
+                if (!sound) return;
+                const url = URL.createObjectURL(sound.blob);
+                const audio = new Audio(url);
+                audio.loop = true; audio.volume = document.querySelector('.volume-slider').value;
+                audio.play();
+                activeAudios[id] = audio;
+                currentPlayingId = id;
+                syncLocalPlayerUI();
+                renderAmbientList();
+            };
+        }
+        syncLocalPlayerUI();
+        renderAmbientList();
+    }
+
+    function syncLocalPlayerUI() {
+        if (activeSource !== 'local') return;
+
+        if (currentPlayingId && activeAudios[currentPlayingId]) {
+            const isPaused = activeAudios[currentPlayingId].paused;
+            
+            const transaction = db.transaction(["sounds"], "readonly");
+            const store = transaction.objectStore("sounds");
+            const request = store.get(currentPlayingId);
+            request.onsuccess = () => {
+                const trackName = request.result ? request.result.name : "Unknown Track";
+                updateUniversalPlayer('local', trackName, isPaused);
+            };
+        } else {
+            if (Object.keys(activeAudios).length > 0) {
+                 updateUniversalPlayer('local', "Paused", true);
+            } else {
+                 updateUniversalPlayer('none');
+            }
+        }
+    }
+
+    function toggleActiveSound() {
+        if (currentPlayingId && activeAudios[currentPlayingId]) {
+            if (activeAudios[currentPlayingId].paused) activeAudios[currentPlayingId].play();
+            else activeAudios[currentPlayingId].pause();
+            syncLocalPlayerUI();
+            renderAmbientList();
+        }
+    }
+
+    function setGlobalVolume(v) { Object.values(activeAudios).forEach(a => a.volume = v); }
+
+    function initAudioEngine() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      document.getElementById('interactionGuard').style.opacity = '0';
+      setTimeout(() => document.getElementById('interactionGuard').style.display = 'none', 300);
+      detectDevice(); // initialize responsive layout
+    }
+
+    // --- BACKGROUNDS ---
+    const backgrounds = [
+      { name: "Mountain Lake", href: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070" },
+      { name: "Deep Forest", href: "https://wallpapers.com/images/featured/4k-forest-7sfd6znw2ry6hnlt.jpg" },
+      { name: "Rainy Window", href: "https://wallpapercave.com/wp/wp8987824.jpg" },
+      { name: "Mount Fuji", href: "https://cdn.wallpapersafari.com/70/51/KayeUz.jpg" },
+      { name: "Himalayas", href: "https://pixelz.cc/wp-content/uploads/2016/11/annapurna-massif-himalayas-nepal-4k-wallpaper.jpg" },
+      { name: "Tokyo City", href: "https://images.pexels.com/photos/2506923/pexels-photo-2506923.jpeg?cs=srgb&dl=pexels-apasaric-2506923.jpg&fm=jpg" }
+    ];
+
+    window.onload = async () => {
+      await initDB();
+      loadNote();
+      renderTodos();
+      renderAmbientList();
+      updateStatsDisplay();
+      
+      const container = document.getElementById('bgPicker');
+      backgrounds.forEach(bg => {
+        const div = document.createElement('div');
+        div.className = 'bg-option';
+        div.innerText = bg.name; 
+        div.onclick = () => setCustomBackground(bg.href);
+        container.appendChild(div);
+      });
+
+      setInterval(() => {
+        document.getElementById('realtimeClock').innerText = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      }, 1000);
+      switchCard('defaultCard');
+    };
+
+    function setCustomBackground(url) {
+      if (url) document.body.style.backgroundImage = `url("${url}")`;
+    }
+
+    function handleLocalImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => setCustomBackground(e.target.result);
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // --- TIMER LOGIC ---
+    function handleEnterKey(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.target.blur();
+      }
+    }
+
+    function getCircumference() {
+        const r = DEVICE.type === 'mobile' ? 85 : 105;
+        return 2 * Math.PI * r;
+    }
+
+    function updateDisplay(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      const container = document.getElementById(currentMode);
+      if (!container) return;
+      
+      const digits = container.querySelectorAll('.digit-btn');
+      const circle = container.querySelector('.progress-ring__circle');
+      
+      digits[0].innerText = String(m).padStart(2, '0');
+      digits[1].innerText = String(s).padStart(2, '0');
+      
+      const circ = getCircumference();
+      const baseTime = initialTime > 0 ? initialTime : 1;
+      const progress = seconds / baseTime;
+      const offset = circ - progress * circ;
+      
+      circle.style.strokeDasharray = `${circ} ${circ}`;
+      circle.style.strokeDashoffset = isNaN(offset) ? 0 : offset;
+    }
+
+    function manualTimeUpdate() {
+      const container = document.getElementById(currentMode);
+      const digits = container.querySelectorAll('.digit-btn');
+      let mins = parseInt(digits[0].innerText.replace(/\D/g, '')) || 0;
+      let secs = parseInt(digits[1].innerText.replace(/\D/g, '')) || 0;
+      if (secs > 59) secs = 59;
+      totalSeconds = (mins * 60) + secs;
+      initialTime = totalSeconds;
+      updateDisplay(totalSeconds);
+    }
+
+    function toggleTimer() {
+      const container = document.getElementById(currentMode);
+      const icon = container.querySelector('.main-controls .main i');
+      if(isRunning) {
+        clearInterval(interval);
+        isRunning = false;
+        manageWakeLock(false);
+        icon.className = 'fas fa-play';
+      } else {
+        if(totalSeconds <= 0) return;
+        isRunning = true;
+        manageWakeLock(true);
+        icon.className = 'fas fa-pause';
+        
+        interval = setInterval(() => {
+          totalSeconds--;
+          updateDisplay(totalSeconds);
+          if(totalSeconds <= 0) {
+            clearInterval(interval);
+            isRunning = false;
+            manageWakeLock(false);
+            icon.className = 'fas fa-play';
+            triggerAlarmSequence(); 
+            incrementSessions();
+            
+            // Record advanced stats (only count minutes intended to run)
+            const minutesCompleted = Math.max(1, Math.floor(initialTime / 60));
+            recordAdvancedStats(minutesCompleted);
+            
+            showToast("Focus session complete!");
+            sendBrowserNotification("Session Complete", "Great job! Time for a break.");
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(interval);
+      isRunning = false;
+      manageWakeLock(false);
+      totalSeconds = 0;
+      initialTime = 0;
+      updateDisplay(totalSeconds);
+      document.querySelectorAll('.main-controls .main i').forEach(i => i.className = 'fas fa-play');
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    function setPreset(mins, btn) {
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      clearInterval(interval);
+      isRunning = false;
+      manageWakeLock(false);
+      document.querySelectorAll('.main-controls .main i').forEach(i => i.className = 'fas fa-play');
+      totalSeconds = mins * 60;
+      initialTime = totalSeconds;
+      updateDisplay(totalSeconds);
+    }
+
+    function switchCard(cardId) {
+      if (isRunning) toggleTimer();
+      document.querySelectorAll('.timer-container').forEach(c => c.classList.add('hidden-card'));
+      const activeCard = document.getElementById(cardId);
+      activeCard.classList.remove('hidden-card');
+      currentMode = cardId;
+      const digits = activeCard.querySelectorAll('.digit-btn');
+      let mins = parseInt(digits[0].innerText.replace(/\D/g, '')) || 0;
+      let secs = parseInt(digits[1].innerText.replace(/\D/g, '')) || 0;
+      totalSeconds = (mins * 60) + secs;
+      initialTime = totalSeconds;
+      updateDisplay(totalSeconds);
+    }
+
+    function setBrightness(v) { document.documentElement.style.setProperty('--bg-brightness', v); }
+    function setBlur(v) { document.documentElement.style.setProperty('--bg-blur', v + 'px'); }
+    function toggleVignette(isOn) { document.documentElement.style.setProperty('--vignette', isOn ? '80%' : '0%'); }
+    
+    function setAccent(color, dot) {
+        document.documentElement.style.setProperty('--accent', color);
+        document.querySelectorAll('.accent-dot').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+    }
+
+    function triggerAlarmSequence() {
+      if (!audioCtx) return;
+      let playCount = 0;
+      const playBell = () => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        playCount++; if (playCount < 4) setTimeout(playBell, 400); 
+      };
+      playBell();
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  </script>
 </body>
 </html>
