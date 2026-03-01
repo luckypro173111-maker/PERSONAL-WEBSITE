@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,10 +69,6 @@
   .btn-ghost { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.08); }
   .btn-ghost:hover { background: rgba(255,255,255,0.09); }
 
-  /* Greeting shimmer */
-  .greeting-shimmer { background: linear-gradient(90deg, #818cf8, #a78bfa, #60a5fa, #818cf8); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shimmer 4s linear infinite; }
-  @keyframes shimmer { 0% { background-position: 0% } 100% { background-position: 200% } }
-
   /* Clock */
   #clock { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
 
@@ -93,15 +88,15 @@
   /* Edit bottom sheet */
   #edit-bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; z-index: 500; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); border-radius: 24px 24px 0 0; background: rgba(8,8,8,0.99); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); padding: 0 20px 40px; max-height: 90vh; overflow-y: auto; }
   #edit-bottom-sheet.open { transform: translateY(0); }
+
   /* Delete btn on card */
   .card-delete-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s, background 0.2s; cursor: pointer; z-index: 10; }
   .card-delete-btn:hover { background: rgba(239,68,68,0.4); }
   .glass:hover .card-delete-btn { opacity: 1; }
-  /* Always show on touch */
   body.touch-device .card-delete-btn { opacity: 0.7; }
-  #ctx-menu { position: fixed; z-index: 600; min-width: 160px; padding: 6px; }
-  #ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-family: 'Space Grotesk', sans-serif; background: none; border: none; color: #e2e8f0; cursor: pointer; transition: background 0.15s; }
-  #ctx-menu button:hover { background: rgba(255,255,255,0.1); }
+
+  /* Local file badge on card */
+  .local-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 100px; background: rgba(52,211,153,0.15); color: rgba(52,211,153,0.9); border: 1px solid rgba(52,211,153,0.2); margin-top: 4px; }
 
   /* Toast */
   #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 700; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all 0.3s; background: rgba(129,140,248,0.9); }
@@ -118,6 +113,10 @@
   .card-accent { height: 2px; border-radius: 2px; background: linear-gradient(90deg, #818cf8, #60a5fa); margin-bottom: 12px; opacity: 0; transition: opacity 0.25s; }
   .glass:hover .card-accent { opacity: 1; }
 
+  /* Local file: green accent bar */
+  .card-accent-local { height: 2px; border-radius: 2px; background: linear-gradient(90deg, #34d399, #10b981); margin-bottom: 12px; opacity: 0; transition: opacity 0.25s; }
+  .glass:hover .card-accent-local { opacity: 1; }
+
   /* Category badge */
   .cat-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 100px; background: rgba(129,140,248,0.2); color: rgba(129,140,248,0.9); }
 
@@ -125,6 +124,10 @@
   canvas#stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.7; }
 
   .content-wrapper { position: relative; z-index: 1; }
+
+  /* URL type toggle */
+  .url-type-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: rgba(255,255,255,0.4); }
+  .url-type-btn.active { background: rgba(129,140,248,0.2); color: rgba(129,140,248,1); border-color: rgba(129,140,248,0.4); }
 </style>
 </head>
 <body class="min-h-screen">
@@ -151,8 +154,13 @@
       <input id="dm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
     </div>
     <div>
-      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
-      <input id="dm-url" type="url" class="aether-input" placeholder="https://github.com">
+      <label class="block text-xs font-600 text-slate-400 mb-2 uppercase tracking-widest">URL Type</label>
+      <div class="flex gap-2 mb-3">
+        <button class="url-type-btn active" id="dm-type-web" onclick="setUrlType('dm','web')">🌐 Web URL</button>
+        <button class="url-type-btn" id="dm-type-local" onclick="setUrlType('dm','local')">📁 Local File</button>
+      </div>
+      <input id="dm-url" type="text" class="aether-input" placeholder="https://github.com">
+      <p id="dm-url-hint" class="text-xs text-slate-500 mt-1.5 hidden">Enter a relative path, e.g. <span class="text-emerald-400 font-mono">apps/myapp.html</span></p>
     </div>
     <div>
       <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category (optional)</label>
@@ -184,8 +192,13 @@
       <input id="bm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
     </div>
     <div>
-      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
-      <input id="bm-url" type="url" class="aether-input" placeholder="https://github.com">
+      <label class="block text-xs font-600 text-slate-400 mb-2 uppercase tracking-widest">URL Type</label>
+      <div class="flex gap-2 mb-3">
+        <button class="url-type-btn active" id="bm-type-web" onclick="setUrlType('bm','web')">🌐 Web URL</button>
+        <button class="url-type-btn" id="bm-type-local" onclick="setUrlType('bm','local')">📁 Local File</button>
+      </div>
+      <input id="bm-url" type="text" class="aether-input" placeholder="https://github.com">
+      <p id="bm-url-hint" class="text-xs text-slate-500 mt-1.5 hidden">Enter a relative path, e.g. <span class="text-emerald-400 font-mono">apps/myapp.html</span></p>
     </div>
     <div>
       <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category (optional)</label>
@@ -216,8 +229,13 @@
       <input id="em-title" type="text" class="aether-input" placeholder="e.g. GitHub">
     </div>
     <div>
-      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
-      <input id="em-url" type="url" class="aether-input" placeholder="https://github.com">
+      <label class="block text-xs font-600 text-slate-400 mb-2 uppercase tracking-widest">URL Type</label>
+      <div class="flex gap-2 mb-3">
+        <button class="url-type-btn active" id="em-type-web" onclick="setUrlType('em','web')">🌐 Web URL</button>
+        <button class="url-type-btn" id="em-type-local" onclick="setUrlType('em','local')">📁 Local File</button>
+      </div>
+      <input id="em-url" type="text" class="aether-input" placeholder="https://github.com">
+      <p id="em-url-hint" class="text-xs text-slate-500 mt-1.5 hidden">Enter a relative path, e.g. <span class="text-emerald-400 font-mono">apps/myapp.html</span></p>
     </div>
     <div>
       <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category</label>
@@ -249,8 +267,13 @@
       <input id="ebm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
     </div>
     <div>
-      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
-      <input id="ebm-url" type="url" class="aether-input" placeholder="https://github.com">
+      <label class="block text-xs font-600 text-slate-400 mb-2 uppercase tracking-widest">URL Type</label>
+      <div class="flex gap-2 mb-3">
+        <button class="url-type-btn active" id="ebm-type-web" onclick="setUrlType('ebm','web')">🌐 Web URL</button>
+        <button class="url-type-btn" id="ebm-type-local" onclick="setUrlType('ebm','local')">📁 Local File</button>
+      </div>
+      <input id="ebm-url" type="text" class="aether-input" placeholder="https://github.com">
+      <p id="ebm-url-hint" class="text-xs text-slate-500 mt-1.5 hidden">Enter a relative path, e.g. <span class="text-emerald-400 font-mono">apps/myapp.html</span></p>
     </div>
     <div>
       <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category</label>
@@ -271,8 +294,6 @@
     </div>
   </div>
 </div>
-
-
 
 <!-- Main Content -->
 <div class="content-wrapper max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -395,7 +416,7 @@ function initCursor() {
 })();
 
 // ─────────────────────────────────────────────
-// CLOCK & GREETING
+// CLOCK
 // ─────────────────────────────────────────────
 function updateClock() {
   const now = new Date();
@@ -407,6 +428,79 @@ function updateClock() {
 }
 updateClock();
 setInterval(updateClock, 15000);
+
+// ─────────────────────────────────────────────
+// URL HELPERS
+// ─────────────────────────────────────────────
+
+// Detect if a URL is a local file path (not a web URL)
+function isLocalPath(url) {
+  if (!url) return false;
+  // Local if: no protocol, or file:// protocol, or starts with ./ or ../
+  return !url.startsWith('http://') &&
+         !url.startsWith('https://') &&
+         !url.startsWith('//');
+}
+
+// Build a navigable URL from a stored URL value
+function buildUrl(url) {
+  if (!url) return '#';
+  if (isLocalPath(url)) return url; // already a relative path
+  return url; // already absolute web URL
+}
+
+// When saving a web URL, auto-prepend https:// if missing
+function normalizeWebUrl(url) {
+  if (!url) return url;
+  if (isLocalPath(url)) return url; // don't touch local paths
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return 'https://' + url;
+  }
+  return url;
+}
+
+// Get the domain for favicon lookup — returns null for local paths
+function getDomain(url) {
+  if (isLocalPath(url)) return null;
+  try { return new URL(url).hostname; }
+  catch { return null; }
+}
+
+// ─────────────────────────────────────────────
+// URL TYPE TOGGLE IN FORMS
+// ─────────────────────────────────────────────
+function setUrlType(prefix, type) {
+  const webBtn = document.getElementById(`${prefix}-type-web`);
+  const localBtn = document.getElementById(`${prefix}-type-local`);
+  const urlInput = document.getElementById(`${prefix}-url`);
+  const hint = document.getElementById(`${prefix}-url-hint`);
+
+  if (type === 'web') {
+    webBtn.classList.add('active');
+    localBtn.classList.remove('active');
+    urlInput.placeholder = 'https://github.com';
+    urlInput.setAttribute('data-url-type', 'web');
+    if (hint) hint.classList.add('hidden');
+  } else {
+    localBtn.classList.add('active');
+    webBtn.classList.remove('active');
+    urlInput.placeholder = 'apps/myapp.html';
+    urlInput.setAttribute('data-url-type', 'local');
+    if (hint) hint.classList.remove('hidden');
+  }
+  urlInput.value = '';
+  urlInput.focus();
+}
+
+// Auto-detect and set correct toggle when editing an existing site
+function autoDetectUrlType(prefix, url) {
+  if (isLocalPath(url)) {
+    setUrlType(prefix, 'local');
+  } else {
+    setUrlType(prefix, 'web');
+  }
+  document.getElementById(`${prefix}-url`).value = url;
+}
 
 // ─────────────────────────────────────────────
 // DATA LAYER
@@ -421,11 +515,6 @@ function saveSites(sites) {
 }
 
 function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-
-function getDomain(url) {
-  try { return new URL(url.startsWith('http') ? url : 'https://' + url).hostname; }
-  catch { return url; }
-}
 
 // Image optimization via canvas
 function optimizeImage(dataUrl, cb) {
@@ -443,11 +532,94 @@ function optimizeImage(dataUrl, cb) {
 }
 
 // ─────────────────────────────────────────────
+// ICON SYSTEM — multi-source with canvas fallback
+// ─────────────────────────────────────────────
+
+// Palette for letter-icon backgrounds
+const ICON_COLORS = [
+  '#6366f1','#8b5cf6','#ec4899','#f43f5e',
+  '#f97316','#eab308','#22c55e','#14b8a6',
+  '#3b82f6','#06b6d4'
+];
+
+function getIconColor(title) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return ICON_COLORS[Math.abs(hash) % ICON_COLORS.length];
+}
+
+// Draw a letter-icon onto a canvas and return a data URL
+function makeLetterIcon(title, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  // Background
+  ctx.fillStyle = color + '33'; // 20% opacity fill
+  ctx.beginPath();
+  ctx.roundRect(0, 0, 64, 64, 14);
+  ctx.fill();
+  // Border
+  ctx.strokeStyle = color + '88';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Letter
+  ctx.fillStyle = color;
+  ctx.font = 'bold 28px Space Grotesk, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText((title || '?')[0].toUpperCase(), 32, 33);
+  return canvas.toDataURL();
+}
+
+// Try favicon sources in order, falling back to letter icon
+function setFavicon(imgEl, site) {
+  if (site.image) {
+    imgEl.src = site.image;
+    return;
+  }
+
+  const local = isLocalPath(site.url);
+  const color = getIconColor(site.title);
+
+  if (local) {
+    // Local files always get a letter icon (no network lookup possible)
+    imgEl.src = makeLetterIcon(site.title, '#34d399');
+    return;
+  }
+
+  const domain = getDomain(site.url);
+  if (!domain) {
+    imgEl.src = makeLetterIcon(site.title, color);
+    return;
+  }
+
+  // Try sources in sequence
+  const sources = [
+    `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
+    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+    `https://favicon.im/${domain}?larger=true`,
+    `https://${domain}/favicon.ico`,
+  ];
+
+  let idx = 0;
+  function tryNext() {
+    if (idx >= sources.length) {
+      // All failed — use letter icon
+      imgEl.src = makeLetterIcon(site.title, color);
+      imgEl.onerror = null;
+      return;
+    }
+    imgEl.onerror = () => { idx++; tryNext(); };
+    imgEl.src = sources[idx++];
+  }
+  tryNext();
+}
+
+// ─────────────────────────────────────────────
 // RENDER
 // ─────────────────────────────────────────────
 let rearrangeMode = false;
 let dragSrcId = null;
-let ctxTargetId = null;
 let longPressTimer = null;
 
 function renderSites() {
@@ -456,7 +628,10 @@ function renderSites() {
   const query = document.getElementById('search-input').value.toLowerCase();
   let sites = getSites();
 
-  if (query) sites = sites.filter(s => s.title.toLowerCase().includes(query) || getDomain(s.url).includes(query));
+  if (query) sites = sites.filter(s => {
+    const domain = getDomain(s.url) || '';
+    return s.title.toLowerCase().includes(query) || domain.includes(query) || s.url.toLowerCase().includes(query);
+  });
 
   grid.innerHTML = '';
 
@@ -467,34 +642,42 @@ function renderSites() {
   emptyState.classList.add('hidden');
 
   sites.forEach((site, idx) => {
+    const local = isLocalPath(site.url);
     const card = document.createElement('div');
     card.className = `glass p-4 flex flex-col items-center text-center cursor-pointer select-none card-enter${rearrangeMode ? ' rearrange-active' + (isTouchDevice ? ' rearrange-pulse' : '') : ''}`;
     card.style.animationDelay = `${idx * 0.04}s`;
     card.dataset.id = site.id;
     card.setAttribute('draggable', rearrangeMode && !isTouchDevice ? 'true' : 'false');
     card.style.minHeight = '44px';
-
     card.style.position = 'relative';
 
-    const iconSrc = site.image
-      ? site.image
-      : `https://www.google.com/s2/favicons?sz=64&domain=${getDomain(site.url)}`;
+    // Accent bar colour: green for local, indigo for web
+    const accentClass = local ? 'card-accent-local' : 'card-accent';
 
     card.innerHTML = `
-      <div class="card-accent w-full"></div>
+      <div class="${accentClass} w-full"></div>
       <button class="card-delete-btn" onclick="event.stopPropagation(); deleteSite('${site.id}')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(239,100,100,0.9)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
       ${rearrangeMode ? '<div class="text-slate-500 mb-2 text-xs">⠿</div>' : ''}
-      <img src="${iconSrc}" alt="" class="site-favicon mb-3" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'rgba(255,255,255,0.3)\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/></svg>'">
+      <img class="site-favicon mb-3" alt="">
       <span class="text-sm font-600 text-white leading-tight truncate w-full" style="font-weight:600">${esc(site.title)}</span>
       ${site.category ? `<span class="cat-badge mt-2">${esc(site.category)}</span>` : ''}
+      ${local ? `<span class="local-badge">local</span>` : ''}
     `;
 
-    // Click to open (not in rearrange)
+    // Set favicon via robust multi-source loader
+    setFavicon(card.querySelector('img'), site);
+
+    // Click to open
     card.addEventListener('click', () => {
-      if (!rearrangeMode) {
-        window.open(site.url.startsWith('http') ? site.url : 'https://' + site.url, '_blank');
+      if (rearrangeMode) return;
+      const url = site.url;
+      if (isLocalPath(url)) {
+        // Local files: navigate in the same tab (works for file:// and served paths)
+        window.location.href = url;
+      } else {
+        window.open(url, '_blank');
       }
     });
 
@@ -504,7 +687,6 @@ function renderSites() {
         e.preventDefault();
         openEditModal(site.id);
       });
-      // Drag & Drop (desktop)
       if (rearrangeMode) {
         card.addEventListener('dragstart', e => {
           dragSrcId = site.id;
@@ -533,7 +715,6 @@ function renderSites() {
         lastTap = now;
       }, { passive: false });
 
-      // Touch device: long press to activate rearrange
       if (!rearrangeMode) {
         card.addEventListener('touchstart', e => {
           longPressTimer = setTimeout(() => {
@@ -546,18 +727,13 @@ function renderSites() {
         card.addEventListener('touchend', () => clearTimeout(longPressTimer), { passive: true });
         card.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
       } else {
-        // Touch drag for rearrange
         let touchSrcId = site.id;
-        card.addEventListener('touchstart', e => {
-          dragSrcId = touchSrcId;
-        }, { passive: true });
+        card.addEventListener('touchstart', e => { dragSrcId = touchSrcId; }, { passive: true });
         card.addEventListener('touchend', e => {
           if (!dragSrcId) return;
           const touch = e.changedTouches[0];
           const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-id]');
-          if (el && el.dataset.id !== dragSrcId) {
-            reorderSites(dragSrcId, el.dataset.id);
-          }
+          if (el && el.dataset.id !== dragSrcId) reorderSites(dragSrcId, el.dataset.id);
           dragSrcId = null;
         }, { passive: true });
       }
@@ -603,6 +779,9 @@ let pendingImageData = null;
 
 function openAddModal() {
   pendingImageData = null;
+  // Reset URL type toggles
+  setUrlType('dm', 'web');
+  setUrlType('bm', 'web');
   if (window.innerWidth < 640 || isTouchDevice) {
     openBottomSheet();
   } else {
@@ -629,7 +808,13 @@ function clearFields() {
   pendingImageData = null;
 }
 
-document.getElementById('modal-overlay').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  // Only close if clicking the overlay itself, not a modal on top
+  if (e.target === document.getElementById('modal-overlay')) {
+    closeModal();
+    closeEditModal();
+  }
+});
 
 // Desktop image upload
 document.getElementById('dm-img').addEventListener('change', function() {
@@ -679,9 +864,18 @@ function clearImageMobile() {
   document.getElementById('bm-img').value = '';
 }
 
+function getUrlFromInput(prefix) {
+  const input = document.getElementById(`${prefix}-url`);
+  const type = input.getAttribute('data-url-type') || 'web';
+  const val = input.value.trim();
+  // For web URLs, auto-prepend https:// if missing
+  if (type === 'web' && val && !val.startsWith('http')) return 'https://' + val;
+  return val;
+}
+
 function saveSiteDesktop() {
   const title = document.getElementById('dm-title').value.trim();
-  const url = document.getElementById('dm-url').value.trim();
+  const url = getUrlFromInput('dm');
   const cat = document.getElementById('dm-cat').value.trim();
   if (!title || !url) { showToast('Title and URL are required'); return; }
   addSite(title, url, cat, pendingImageData);
@@ -690,7 +884,7 @@ function saveSiteDesktop() {
 
 function saveSiteMobile() {
   const title = document.getElementById('bm-title').value.trim();
-  const url = document.getElementById('bm-url').value.trim();
+  const url = getUrlFromInput('bm');
   const cat = document.getElementById('bm-cat').value.trim();
   if (!title || !url) { showToast('Title and URL are required'); return; }
   addSite(title, url, cat, pendingImageData);
@@ -711,45 +905,37 @@ function addSite(title, url, category, image) {
 let sheetStartY = 0;
 
 function openBottomSheet() {
-  const sheet = document.getElementById('bottom-sheet');
   document.getElementById('modal-overlay').classList.add('open');
-  sheet.classList.add('open');
+  document.getElementById('bottom-sheet').classList.add('open');
 }
 
 function closeBottomSheet() {
   document.getElementById('bottom-sheet').classList.remove('open');
 }
 
-// Swipe to dismiss
 const sheet = document.getElementById('bottom-sheet');
-const handle = document.getElementById('sheet-handle');
-
-sheet.addEventListener('touchstart', e => {
-  sheetStartY = e.touches[0].clientY;
-}, { passive: true });
-
+sheet.addEventListener('touchstart', e => { sheetStartY = e.touches[0].clientY; }, { passive: true });
 sheet.addEventListener('touchend', e => {
-  const delta = e.changedTouches[0].clientY - sheetStartY;
-  if (delta > 80) closeModal();
+  if (e.changedTouches[0].clientY - sheetStartY > 80) closeModal();
 }, { passive: true });
 
 // ─────────────────────────────────────────────
 // EDIT MODAL
 // ─────────────────────────────────────────────
 let editTargetId = null;
-let editPendingImage = null;
+let editPendingImage = undefined;
 
 function openEditModal(id) {
   editTargetId = id;
-  editPendingImage = undefined; // undefined = no change, null = remove
+  editPendingImage = undefined;
   const site = getSites().find(s => s.id === id);
   if (!site) return;
 
   const isMobile = window.innerWidth < 640 || isTouchDevice;
 
   if (isMobile) {
+    autoDetectUrlType('ebm', site.url);
     document.getElementById('ebm-title').value = site.title;
-    document.getElementById('ebm-url').value = site.url;
     document.getElementById('ebm-cat').value = site.category || '';
     const prev = document.getElementById('ebm-img-preview');
     if (site.image) { prev.src = site.image; prev.style.display = 'block'; document.getElementById('ebm-clear-img').classList.remove('hidden'); }
@@ -757,8 +943,8 @@ function openEditModal(id) {
     document.getElementById('modal-overlay').classList.add('open');
     document.getElementById('edit-bottom-sheet').classList.add('open');
   } else {
+    autoDetectUrlType('em', site.url);
     document.getElementById('em-title').value = site.title;
-    document.getElementById('em-url').value = site.url;
     document.getElementById('em-cat').value = site.category || '';
     const prev = document.getElementById('em-img-preview');
     if (site.image) { prev.src = site.image; prev.style.display = 'block'; document.getElementById('em-clear-img').classList.remove('hidden'); }
@@ -780,7 +966,7 @@ function saveEdit() {
   const isMobile = window.innerWidth < 640 || isTouchDevice;
   const prefix = isMobile ? 'ebm' : 'em';
   const title = document.getElementById(`${prefix}-title`).value.trim();
-  const url = document.getElementById(`${prefix}-url`).value.trim();
+  const url = getUrlFromInput(prefix);
   const cat = document.getElementById(`${prefix}-cat`).value.trim();
   if (!title || !url) { showToast('Title and URL are required'); return; }
 
@@ -850,7 +1036,6 @@ function deleteSite(id) {
   showToast('Site removed');
 }
 
-
 // ─────────────────────────────────────────────
 // REARRANGE TOGGLE
 // ─────────────────────────────────────────────
@@ -891,7 +1076,7 @@ document.addEventListener('keydown', e => {
 // ─────────────────────────────────────────────
 const defaults = [
   { id: 'default-1', title: 'Pomodoro', url: 'apps/Pomodoro.html', category: 'Utility', image: 'images/pomodoro.png' },
-  { id: 'default-2', title: 'YouTube', url: 'apps_1/Dashboard.html', category: 'Media', image: null },
+  { id: 'default-2', title: 'Dashboard', url: 'apps_1/Dashboard.html', category: 'Media', image: null },
   { id: 'default-3', title: 'Reddit', url: 'https://reddit.com', category: 'Social', image: null },
   { id: 'default-4', title: 'Notion', url: 'https://notion.so', category: 'Work', image: null },
   { id: 'default-5', title: 'X', url: 'https://x.com', category: 'Social', image: null },
