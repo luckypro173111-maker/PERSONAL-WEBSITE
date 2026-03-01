@@ -1,1 +1,907 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aether — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { grotesk: ['Space Grotesk', 'sans-serif'] },
+        colors: {
+          navy: { 900: '#080d1a', 800: '#0d1528', 700: '#111d35' }
+        }
+      }
+    }
+  }
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #000000; min-height: 100vh; color: #e2e8f0; overflow-x: hidden; cursor: none; }
+  body.touch-device { cursor: auto; }
+
+  /* Custom Cursor */
+  #cursor-dot { width: 6px; height: 6px; background: #818cf8; border-radius: 50%; position: fixed; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); transition: background 0.2s; }
+  #cursor-ring { width: 32px; height: 32px; border: 1.5px solid rgba(129,140,248,0.6); border-radius: 50%; position: fixed; pointer-events: none; z-index: 9998; transform: translate(-50%, -50%); transition: width 0.2s, height 0.2s, border-color 0.2s; }
+  #cursor-ring.hovering { width: 48px; height: 48px; border-color: rgba(129,140,248,0.9); }
+
+  /* Glass card */
+  .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; transition: all 0.25s ease; }
+  .glass:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.8); }
+  .glass-modal { background: rgba(10,10,10,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+  /* Drag states */
+  .card-dragging { opacity: 0.4; transform: scale(0.96); }
+  .card-drag-over { border-color: rgba(129,140,248,0.7) !important; box-shadow: 0 0 0 2px rgba(129,140,248,0.4); }
+
+  /* Rearrange pulse */
+  .rearrange-pulse { animation: pulsering 1.5s ease-in-out infinite; }
+  @keyframes pulsering {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(129,140,248,0.5); }
+    50% { box-shadow: 0 0 0 8px rgba(129,140,248,0); }
+  }
+
+  /* Bottom sheet */
+  #bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; z-index: 500; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); border-radius: 24px 24px 0 0; background: rgba(8,8,8,0.99); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); padding: 0 20px 40px; max-height: 90vh; overflow-y: auto; }
+  #bottom-sheet.open { transform: translateY(0); }
+  .sheet-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.25); border-radius: 2px; margin: 12px auto 20px; }
+
+  /* Modal overlay */
+  #modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+  #modal-overlay.open { opacity: 1; pointer-events: all; }
+  #desktop-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); z-index: 500; width: 420px; max-width: 90vw; opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  #desktop-modal.open { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+
+  /* Input styles */
+  .aether-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 14px; color: #e2e8f0; width: 100%; outline: none; font-family: 'Space Grotesk', sans-serif; font-size: 14px; transition: border-color 0.2s, background 0.2s; }
+  .aether-input:focus { border-color: rgba(129,140,248,0.6); background: rgba(255,255,255,0.07); }
+  .aether-input::placeholder { color: rgba(255,255,255,0.3); }
+  .aether-btn { font-family: 'Space Grotesk', sans-serif; border-radius: 10px; padding: 10px 20px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; outline: none; }
+  .btn-primary { background: linear-gradient(135deg, #818cf8, #6366f1); color: white; }
+  .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-ghost { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.08); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.09); }
+
+  /* Greeting shimmer */
+  .greeting-shimmer { background: linear-gradient(90deg, #818cf8, #a78bfa, #60a5fa, #818cf8); background-size: 200%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shimmer 4s linear infinite; }
+  @keyframes shimmer { 0% { background-position: 0% } 100% { background-position: 200% } }
+
+  /* Clock */
+  #clock { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+  /* Add card */
+  .add-card { border: 2px dashed rgba(129,140,248,0.3); cursor: pointer; background: rgba(129,140,248,0.04); }
+  .add-card:hover { border-color: rgba(129,140,248,0.6); background: rgba(129,140,248,0.08); transform: translateY(-3px); }
+
+  /* Image upload preview */
+  #img-preview { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; display: none; }
+
+  /* Site card favicon */
+  .site-favicon { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,0.1); padding: 4px; }
+
+  /* Edit modal */
+  #edit-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.9); z-index: 500; width: 420px; max-width: 90vw; opacity: 0; pointer-events: none; transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  #edit-modal.open { opacity: 1; pointer-events: all; transform: translate(-50%, -50%) scale(1); }
+  /* Edit bottom sheet */
+  #edit-bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; z-index: 500; transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1); border-radius: 24px 24px 0 0; background: rgba(8,8,8,0.99); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); padding: 0 20px 40px; max-height: 90vh; overflow-y: auto; }
+  #edit-bottom-sheet.open { transform: translateY(0); }
+  /* Delete btn on card */
+  .card-delete-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s, background 0.2s; cursor: pointer; z-index: 10; }
+  .card-delete-btn:hover { background: rgba(239,68,68,0.4); }
+  .glass:hover .card-delete-btn { opacity: 1; }
+  /* Always show on touch */
+  body.touch-device .card-delete-btn { opacity: 0.7; }
+  #ctx-menu { position: fixed; z-index: 600; min-width: 160px; padding: 6px; }
+  #ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-family: 'Space Grotesk', sans-serif; background: none; border: none; color: #e2e8f0; cursor: pointer; transition: background 0.15s; }
+  #ctx-menu button:hover { background: rgba(255,255,255,0.1); }
+
+  /* Toast */
+  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 700; padding: 10px 20px; border-radius: 100px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all 0.3s; background: rgba(129,140,248,0.9); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Rearrange toggle */
+  .rearrange-active { border: 2px solid rgba(129,140,248,0.5) !important; }
+
+  /* Stagger animation */
+  .card-enter { animation: cardIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  /* Color accent bar on card */
+  .card-accent { height: 2px; border-radius: 2px; background: linear-gradient(90deg, #818cf8, #60a5fa); margin-bottom: 12px; opacity: 0; transition: opacity 0.25s; }
+  .glass:hover .card-accent { opacity: 1; }
+
+  /* Category badge */
+  .cat-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 100px; background: rgba(129,140,248,0.2); color: rgba(129,140,248,0.9); }
+
+  /* Stars/particles bg */
+  canvas#stars { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.7; }
+
+  .content-wrapper { position: relative; z-index: 1; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- Stars background -->
+<canvas id="stars"></canvas>
+
+<!-- Custom cursor (desktop only) -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modal Overlay -->
+<div id="modal-overlay"></div>
+
+<!-- Desktop Modal -->
+<div id="desktop-modal" class="glass-modal p-7">
+  <h3 class="text-lg font-700 mb-5 text-white" style="font-weight:700">Add New Site</h3>
+  <div class="space-y-4">
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Site Title</label>
+      <input id="dm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
+      <input id="dm-url" type="url" class="aether-input" placeholder="https://github.com">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category (optional)</label>
+      <input id="dm-cat" type="text" class="aether-input" placeholder="e.g. Dev, Social, News">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Custom Icon (optional)</label>
+      <div class="flex items-center gap-3">
+        <input id="dm-img" type="file" accept="image/*" class="hidden">
+        <button class="btn-ghost aether-btn text-xs" onclick="document.getElementById('dm-img').click()">Upload Image</button>
+        <img id="img-preview" src="" alt="">
+        <button id="dm-clear-img" class="text-xs text-red-400 hover:text-red-300 hidden" onclick="clearImageDesktop()">Remove</button>
+      </div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button class="btn-primary aether-btn flex-1" onclick="saveSiteDesktop()">Add Site</button>
+      <button class="btn-ghost aether-btn" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Sheet (mobile) -->
+<div id="bottom-sheet">
+  <div class="sheet-handle" id="sheet-handle"></div>
+  <h3 class="text-lg text-white mb-5" style="font-weight:700">Add New Site</h3>
+  <div class="space-y-4">
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Site Title</label>
+      <input id="bm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
+      <input id="bm-url" type="url" class="aether-input" placeholder="https://github.com">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category (optional)</label>
+      <input id="bm-cat" type="text" class="aether-input" placeholder="e.g. Dev, Social">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Custom Icon (optional)</label>
+      <div class="flex items-center gap-3">
+        <input id="bm-img" type="file" accept="image/*" class="hidden">
+        <button class="btn-ghost aether-btn text-xs" onclick="document.getElementById('bm-img').click()">Upload Image</button>
+        <img id="bm-img-preview" src="" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;display:none;">
+        <button id="bm-clear-img" class="text-xs text-red-400 hidden" onclick="clearImageMobile()">Remove</button>
+      </div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button class="btn-primary aether-btn flex-1" onclick="saveSiteMobile()">Add Site</button>
+      <button class="btn-ghost aether-btn" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal (Desktop) -->
+<div id="edit-modal" class="glass-modal p-7">
+  <h3 class="text-lg text-white mb-5" style="font-weight:700">Edit Site</h3>
+  <div class="space-y-4">
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Site Title</label>
+      <input id="em-title" type="text" class="aether-input" placeholder="e.g. GitHub">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
+      <input id="em-url" type="url" class="aether-input" placeholder="https://github.com">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category</label>
+      <input id="em-cat" type="text" class="aether-input" placeholder="e.g. Dev, Social">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Custom Icon (optional)</label>
+      <div class="flex items-center gap-3">
+        <input id="em-img" type="file" accept="image/*" class="hidden">
+        <button class="btn-ghost aether-btn text-xs" onclick="document.getElementById('em-img').click()">Upload Image</button>
+        <img id="em-img-preview" src="" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;display:none;">
+        <button id="em-clear-img" class="text-xs text-red-400 hidden" onclick="clearImageEdit()">Remove</button>
+      </div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button class="btn-primary aether-btn flex-1" onclick="saveEdit()">Save Changes</button>
+      <button class="btn-ghost aether-btn" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Bottom Sheet (Mobile) -->
+<div id="edit-bottom-sheet">
+  <div class="sheet-handle" id="edit-sheet-handle"></div>
+  <h3 class="text-lg text-white mb-5" style="font-weight:700">Edit Site</h3>
+  <div class="space-y-4">
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Site Title</label>
+      <input id="ebm-title" type="text" class="aether-input" placeholder="e.g. GitHub">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">URL</label>
+      <input id="ebm-url" type="url" class="aether-input" placeholder="https://github.com">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Category</label>
+      <input id="ebm-cat" type="text" class="aether-input" placeholder="e.g. Dev, Social">
+    </div>
+    <div>
+      <label class="block text-xs font-600 text-slate-400 mb-1.5 uppercase tracking-widest">Custom Icon (optional)</label>
+      <div class="flex items-center gap-3">
+        <input id="ebm-img" type="file" accept="image/*" class="hidden">
+        <button class="btn-ghost aether-btn text-xs" onclick="document.getElementById('ebm-img').click()">Upload Image</button>
+        <img id="ebm-img-preview" src="" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;display:none;">
+        <button id="ebm-clear-img" class="text-xs text-red-400 hidden" onclick="clearImageEditMobile()">Remove</button>
+      </div>
+    </div>
+    <div class="flex gap-3 pt-2">
+      <button class="btn-primary aether-btn flex-1" onclick="saveEdit()">Save Changes</button>
+      <button class="btn-ghost aether-btn" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Main Content -->
+<div class="content-wrapper max-w-7xl mx-auto px-4 sm:px-6 py-8">
+
+  <!-- Header -->
+  <header class="mb-10">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div>
+        <div id="clock" class="text-3xl sm:text-4xl font-300 text-slate-300" style="font-weight:300"></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="rearrange-btn" onclick="toggleRearrange()" class="btn-ghost aether-btn flex items-center gap-2 text-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          Rearrange
+        </button>
+        <button onclick="openAddModal()" class="btn-primary aether-btn flex items-center gap-2 text-sm">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Site
+        </button>
+      </div>
+    </div>
+    <!-- Search -->
+    <div class="relative mt-6 max-w-sm">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search-input" type="text" class="aether-input pl-9" placeholder="Search sites..." oninput="renderSites()">
+    </div>
+  </header>
+
+  <!-- Sites Grid -->
+  <div id="sites-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+  </div>
+
+  <!-- Empty state -->
+  <div id="empty-state" class="hidden flex flex-col items-center justify-center py-24 text-center">
+    <div class="w-20 h-20 rounded-full glass flex items-center justify-center mb-6 mx-auto">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(129,140,248,0.7)" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </div>
+    <p class="text-xl font-600 text-white mb-2">Your dashboard is empty</p>
+    <p class="text-sm text-slate-500 mb-6">Add your first site to get started</p>
+    <button onclick="openAddModal()" class="btn-primary aether-btn">Add Your First Site</button>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// DEVICE INTELLIGENCE
+// ─────────────────────────────────────────────
+const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+
+if (isTouchDevice) {
+  document.body.classList.add('touch-device');
+  document.getElementById('cursor-dot').remove();
+  document.getElementById('cursor-ring').remove();
+} else {
+  initCursor();
+}
+
+function initCursor() {
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  let mx = 0, my = 0, rx = 0, ry = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px'; dot.style.top = my + 'px';
+  });
+
+  const hoverEls = 'button, a, [data-site], .add-card, input, label, .glass';
+  document.addEventListener('mouseover', e => {
+    if (e.target.closest(hoverEls)) ring.classList.add('hovering');
+  });
+  document.addEventListener('mouseout', e => {
+    if (e.target.closest(hoverEls)) ring.classList.remove('hovering');
+  });
+
+  function animRing() {
+    rx += (mx - rx) * 0.15;
+    ry += (my - ry) * 0.15;
+    ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+    requestAnimationFrame(animRing);
+  }
+  animRing();
+}
+
+// ─────────────────────────────────────────────
+// STARS BACKGROUND
+// ─────────────────────────────────────────────
+(function() {
+  const c = document.getElementById('stars');
+  const ctx = c.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+    stars = Array.from({length: 120}, () => ({
+      x: Math.random() * c.width,
+      y: Math.random() * c.height,
+      r: Math.random() * 1.2 + 0.3,
+      a: Math.random(),
+      speed: Math.random() * 0.005 + 0.002
+    }));
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    stars.forEach(s => {
+      s.a += s.speed;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${0.3 + 0.3 * Math.sin(s.a)})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ─────────────────────────────────────────────
+// CLOCK & GREETING
+// ─────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours(), m = now.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 || 12;
+  const displayM = String(m).padStart(2, '0');
+  document.getElementById('clock').textContent = `${displayH}:${displayM} ${ampm}`;
+}
+updateClock();
+setInterval(updateClock, 15000);
+
+// ─────────────────────────────────────────────
+// DATA LAYER
+// ─────────────────────────────────────────────
+function getSites() {
+  try { return JSON.parse(localStorage.getItem('aether_sites') || '[]'); }
+  catch { return []; }
+}
+function saveSites(sites) {
+  try { localStorage.setItem('aether_sites', JSON.stringify(sites)); }
+  catch { showToast('Storage full – try removing large icons'); }
+}
+
+function generateId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function getDomain(url) {
+  try { return new URL(url.startsWith('http') ? url : 'https://' + url).hostname; }
+  catch { return url; }
+}
+
+// Image optimization via canvas
+function optimizeImage(dataUrl, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const MAX = 64;
+    const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    cb(canvas.toDataURL('image/webp', 0.7));
+  };
+  img.src = dataUrl;
+}
+
+// ─────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────
+let rearrangeMode = false;
+let dragSrcId = null;
+let ctxTargetId = null;
+let longPressTimer = null;
+
+function renderSites() {
+  const grid = document.getElementById('sites-grid');
+  const emptyState = document.getElementById('empty-state');
+  const query = document.getElementById('search-input').value.toLowerCase();
+  let sites = getSites();
+
+  if (query) sites = sites.filter(s => s.title.toLowerCase().includes(query) || getDomain(s.url).includes(query));
+
+  grid.innerHTML = '';
+
+  if (sites.length === 0 && !query) {
+    emptyState.classList.remove('hidden');
+    return;
+  }
+  emptyState.classList.add('hidden');
+
+  sites.forEach((site, idx) => {
+    const card = document.createElement('div');
+    card.className = `glass p-4 flex flex-col items-center text-center cursor-pointer select-none card-enter${rearrangeMode ? ' rearrange-active' + (isTouchDevice ? ' rearrange-pulse' : '') : ''}`;
+    card.style.animationDelay = `${idx * 0.04}s`;
+    card.dataset.id = site.id;
+    card.setAttribute('draggable', rearrangeMode && !isTouchDevice ? 'true' : 'false');
+    card.style.minHeight = '44px';
+
+    card.style.position = 'relative';
+
+    const iconSrc = site.image
+      ? site.image
+      : `https://www.google.com/s2/favicons?sz=64&domain=${getDomain(site.url)}`;
+
+    card.innerHTML = `
+      <div class="card-accent w-full"></div>
+      <button class="card-delete-btn" onclick="event.stopPropagation(); deleteSite('${site.id}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(239,100,100,0.9)" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      ${rearrangeMode ? '<div class="text-slate-500 mb-2 text-xs">⠿</div>' : ''}
+      <img src="${iconSrc}" alt="" class="site-favicon mb-3" onerror="this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 24 24\\' fill=\\'rgba(255,255,255,0.3)\\'><circle cx=\\'12\\' cy=\\'12\\' r=\\'10\\'/></svg>'">
+      <span class="text-sm font-600 text-white leading-tight truncate w-full" style="font-weight:600">${esc(site.title)}</span>
+      ${site.category ? `<span class="cat-badge mt-2">${esc(site.category)}</span>` : ''}
+    `;
+
+    // Click to open (not in rearrange)
+    card.addEventListener('click', () => {
+      if (!rearrangeMode) {
+        window.open(site.url.startsWith('http') ? site.url : 'https://' + site.url, '_blank');
+      }
+    });
+
+    // Desktop right-click → edit modal
+    if (!isTouchDevice) {
+      card.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        openEditModal(site.id);
+      });
+      // Drag & Drop (desktop)
+      if (rearrangeMode) {
+        card.addEventListener('dragstart', e => {
+          dragSrcId = site.id;
+          card.classList.add('card-dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        card.addEventListener('dragend', () => card.classList.remove('card-dragging'));
+        card.addEventListener('dragover', e => { e.preventDefault(); card.classList.add('card-drag-over'); });
+        card.addEventListener('dragleave', () => card.classList.remove('card-drag-over'));
+        card.addEventListener('drop', e => {
+          e.preventDefault();
+          card.classList.remove('card-drag-over');
+          if (dragSrcId && dragSrcId !== site.id) reorderSites(dragSrcId, site.id);
+        });
+      }
+    } else {
+      // Double-tap to edit on mobile
+      let lastTap = 0;
+      card.addEventListener('touchend', e => {
+        const now = Date.now();
+        if (now - lastTap < 300 && now - lastTap > 50) {
+          e.preventDefault();
+          clearTimeout(longPressTimer);
+          openEditModal(site.id);
+        }
+        lastTap = now;
+      }, { passive: false });
+
+      // Touch device: long press to activate rearrange
+      if (!rearrangeMode) {
+        card.addEventListener('touchstart', e => {
+          longPressTimer = setTimeout(() => {
+            rearrangeMode = true;
+            showToast('Rearrange mode — drag to reorder');
+            document.getElementById('rearrange-btn').classList.add('rearrange-active');
+            renderSites();
+          }, 600);
+        }, { passive: true });
+        card.addEventListener('touchend', () => clearTimeout(longPressTimer), { passive: true });
+        card.addEventListener('touchmove', () => clearTimeout(longPressTimer), { passive: true });
+      } else {
+        // Touch drag for rearrange
+        let touchSrcId = site.id;
+        card.addEventListener('touchstart', e => {
+          dragSrcId = touchSrcId;
+        }, { passive: true });
+        card.addEventListener('touchend', e => {
+          if (!dragSrcId) return;
+          const touch = e.changedTouches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('[data-id]');
+          if (el && el.dataset.id !== dragSrcId) {
+            reorderSites(dragSrcId, el.dataset.id);
+          }
+          dragSrcId = null;
+        }, { passive: true });
+      }
+    }
+
+    grid.appendChild(card);
+  });
+
+  // Add site card
+  if (!query) {
+    const addCard = document.createElement('div');
+    addCard.className = 'glass add-card p-4 flex flex-col items-center justify-center text-center min-h-[100px]';
+    addCard.innerHTML = `
+      <div class="w-10 h-10 rounded-full flex items-center justify-center mb-2" style="background:rgba(129,140,248,0.15)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(129,140,248,0.8)" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span class="text-xs text-slate-500 font-600">Add Site</span>
+    `;
+    addCard.onclick = openAddModal;
+    grid.appendChild(addCard);
+  }
+}
+
+function reorderSites(fromId, toId) {
+  const sites = getSites();
+  const fromIdx = sites.findIndex(s => s.id === fromId);
+  const toIdx = sites.findIndex(s => s.id === toId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = sites.splice(fromIdx, 1);
+  sites.splice(toIdx, 0, moved);
+  saveSites(sites);
+  renderSites();
+}
+
+function esc(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────
+// MODAL LOGIC
+// ─────────────────────────────────────────────
+let pendingImageData = null;
+
+function openAddModal() {
+  pendingImageData = null;
+  if (window.innerWidth < 640 || isTouchDevice) {
+    openBottomSheet();
+  } else {
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('desktop-modal').classList.add('open');
+    document.getElementById('dm-title').focus();
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('desktop-modal').classList.remove('open');
+  closeBottomSheet();
+  clearFields();
+}
+
+function clearFields() {
+  ['dm-title','dm-url','dm-cat','bm-title','bm-url','bm-cat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  clearImageDesktop();
+  clearImageMobile();
+  pendingImageData = null;
+}
+
+document.getElementById('modal-overlay').addEventListener('click', closeModal);
+
+// Desktop image upload
+document.getElementById('dm-img').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    optimizeImage(e.target.result, data => {
+      pendingImageData = data;
+      const prev = document.getElementById('img-preview');
+      prev.src = data; prev.style.display = 'block';
+      document.getElementById('dm-clear-img').classList.remove('hidden');
+    });
+  };
+  reader.readAsDataURL(file);
+});
+
+function clearImageDesktop() {
+  pendingImageData = null;
+  const prev = document.getElementById('img-preview');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('dm-clear-img').classList.add('hidden');
+  document.getElementById('dm-img').value = '';
+}
+
+// Mobile image upload
+document.getElementById('bm-img').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    optimizeImage(e.target.result, data => {
+      pendingImageData = data;
+      const prev = document.getElementById('bm-img-preview');
+      prev.src = data; prev.style.display = 'block';
+      document.getElementById('bm-clear-img').classList.remove('hidden');
+    });
+  };
+  reader.readAsDataURL(file);
+});
+
+function clearImageMobile() {
+  pendingImageData = null;
+  const prev = document.getElementById('bm-img-preview');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('bm-clear-img').classList.add('hidden');
+  document.getElementById('bm-img').value = '';
+}
+
+function saveSiteDesktop() {
+  const title = document.getElementById('dm-title').value.trim();
+  const url = document.getElementById('dm-url').value.trim();
+  const cat = document.getElementById('dm-cat').value.trim();
+  if (!title || !url) { showToast('Title and URL are required'); return; }
+  addSite(title, url, cat, pendingImageData);
+  closeModal();
+}
+
+function saveSiteMobile() {
+  const title = document.getElementById('bm-title').value.trim();
+  const url = document.getElementById('bm-url').value.trim();
+  const cat = document.getElementById('bm-cat').value.trim();
+  if (!title || !url) { showToast('Title and URL are required'); return; }
+  addSite(title, url, cat, pendingImageData);
+  closeModal();
+}
+
+function addSite(title, url, category, image) {
+  const sites = getSites();
+  sites.push({ id: generateId(), title, url, category, image: image || null });
+  saveSites(sites);
+  renderSites();
+  showToast(`${title} added!`);
+}
+
+// ─────────────────────────────────────────────
+// BOTTOM SHEET
+// ─────────────────────────────────────────────
+let sheetStartY = 0;
+
+function openBottomSheet() {
+  const sheet = document.getElementById('bottom-sheet');
+  document.getElementById('modal-overlay').classList.add('open');
+  sheet.classList.add('open');
+}
+
+function closeBottomSheet() {
+  document.getElementById('bottom-sheet').classList.remove('open');
+}
+
+// Swipe to dismiss
+const sheet = document.getElementById('bottom-sheet');
+const handle = document.getElementById('sheet-handle');
+
+sheet.addEventListener('touchstart', e => {
+  sheetStartY = e.touches[0].clientY;
+}, { passive: true });
+
+sheet.addEventListener('touchend', e => {
+  const delta = e.changedTouches[0].clientY - sheetStartY;
+  if (delta > 80) closeModal();
+}, { passive: true });
+
+// ─────────────────────────────────────────────
+// EDIT MODAL
+// ─────────────────────────────────────────────
+let editTargetId = null;
+let editPendingImage = null;
+
+function openEditModal(id) {
+  editTargetId = id;
+  editPendingImage = undefined; // undefined = no change, null = remove
+  const site = getSites().find(s => s.id === id);
+  if (!site) return;
+
+  const isMobile = window.innerWidth < 640 || isTouchDevice;
+
+  if (isMobile) {
+    document.getElementById('ebm-title').value = site.title;
+    document.getElementById('ebm-url').value = site.url;
+    document.getElementById('ebm-cat').value = site.category || '';
+    const prev = document.getElementById('ebm-img-preview');
+    if (site.image) { prev.src = site.image; prev.style.display = 'block'; document.getElementById('ebm-clear-img').classList.remove('hidden'); }
+    else { prev.style.display = 'none'; document.getElementById('ebm-clear-img').classList.add('hidden'); }
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('edit-bottom-sheet').classList.add('open');
+  } else {
+    document.getElementById('em-title').value = site.title;
+    document.getElementById('em-url').value = site.url;
+    document.getElementById('em-cat').value = site.category || '';
+    const prev = document.getElementById('em-img-preview');
+    if (site.image) { prev.src = site.image; prev.style.display = 'block'; document.getElementById('em-clear-img').classList.remove('hidden'); }
+    else { prev.style.display = 'none'; document.getElementById('em-clear-img').classList.add('hidden'); }
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('edit-modal').classList.add('open');
+  }
+}
+
+function closeEditModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('edit-modal').classList.remove('open');
+  document.getElementById('edit-bottom-sheet').classList.remove('open');
+  editTargetId = null;
+  editPendingImage = undefined;
+}
+
+function saveEdit() {
+  const isMobile = window.innerWidth < 640 || isTouchDevice;
+  const prefix = isMobile ? 'ebm' : 'em';
+  const title = document.getElementById(`${prefix}-title`).value.trim();
+  const url = document.getElementById(`${prefix}-url`).value.trim();
+  const cat = document.getElementById(`${prefix}-cat`).value.trim();
+  if (!title || !url) { showToast('Title and URL are required'); return; }
+
+  const sites = getSites();
+  const site = sites.find(s => s.id === editTargetId);
+  if (!site) return;
+  site.title = title;
+  site.url = url;
+  site.category = cat;
+  if (editPendingImage !== undefined) site.image = editPendingImage;
+  saveSites(sites);
+  renderSites();
+  showToast('Site updated!');
+  closeEditModal();
+}
+
+function clearImageEdit() {
+  editPendingImage = null;
+  const prev = document.getElementById('em-img-preview');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('em-clear-img').classList.add('hidden');
+  document.getElementById('em-img').value = '';
+}
+
+function clearImageEditMobile() {
+  editPendingImage = null;
+  const prev = document.getElementById('ebm-img-preview');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('ebm-clear-img').classList.add('hidden');
+  document.getElementById('ebm-img').value = '';
+}
+
+document.getElementById('em-img').addEventListener('change', function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => optimizeImage(e.target.result, data => {
+    editPendingImage = data;
+    const prev = document.getElementById('em-img-preview');
+    prev.src = data; prev.style.display = 'block';
+    document.getElementById('em-clear-img').classList.remove('hidden');
+  });
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('ebm-img').addEventListener('change', function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => optimizeImage(e.target.result, data => {
+    editPendingImage = data;
+    const prev = document.getElementById('ebm-img-preview');
+    prev.src = data; prev.style.display = 'block';
+    document.getElementById('ebm-clear-img').classList.remove('hidden');
+  });
+  reader.readAsDataURL(file);
+});
+
+// Edit bottom sheet swipe dismiss
+const editSheet = document.getElementById('edit-bottom-sheet');
+let editSheetStartY = 0;
+editSheet.addEventListener('touchstart', e => { editSheetStartY = e.touches[0].clientY; }, { passive: true });
+editSheet.addEventListener('touchend', e => { if (e.changedTouches[0].clientY - editSheetStartY > 80) closeEditModal(); }, { passive: true });
+
+function deleteSite(id) {
+  const sites = getSites().filter(s => s.id !== id);
+  saveSites(sites);
+  renderSites();
+  showToast('Site removed');
+}
+
+
+// ─────────────────────────────────────────────
+// REARRANGE TOGGLE
+// ─────────────────────────────────────────────
+function toggleRearrange() {
+  rearrangeMode = !rearrangeMode;
+  const btn = document.getElementById('rearrange-btn');
+  if (rearrangeMode) {
+    btn.classList.add('rearrange-active');
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Done`;
+    showToast(isTouchDevice ? 'Long-press cards to drag' : 'Drag cards to reorder');
+  } else {
+    btn.classList.remove('rearrange-active');
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Rearrange`;
+  }
+  renderSites();
+}
+
+// ─────────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openAddModal(); }
+  if (e.key === 'Escape') { closeModal(); closeEditModal(); }
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+const defaults = [
+  { id: 'default-1', title: 'Pomodoro', url: 'apps_1/Pomodoro.html', category: 'Dev', image: null },
+  { id: 'default-2', title: 'YouTube', url: 'apps_1/Dashboard.html', category: 'Media', image: null },
+  { id: 'default-3', title: 'Reddit', url: 'https://reddit.com', category: 'Social', image: null },
+  { id: 'default-4', title: 'Notion', url: 'https://notion.so', category: 'Work', image: null },
+  { id: 'default-5', title: 'X', url: 'https://x.com', category: 'Social', image: null },
+];
+
+if (getSites().length === 0) {
+  saveSites(defaults);
+}
+
+renderSites();
+</script>
+</body>
+</html>
