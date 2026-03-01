@@ -63,8 +63,9 @@
         body {
             background-color: var(--bg-base);
             color: var(--text-main);
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-y: auto; /* Allows scrolling on small screens to prevent squished video */
+            overflow-x: hidden;
             transition: background-color 0.5s ease, color 0.5s ease;
         }
 
@@ -94,7 +95,7 @@
            ========================================= */
         .app-container {
             display: flex; flex-direction: column;
-            height: 100%; max-width: 1600px; margin: 0 auto; padding: 20px;
+            min-height: 100vh; height: 100%; max-width: 1600px; margin: 0 auto; padding: 20px;
             gap: 20px;
         }
 
@@ -114,7 +115,7 @@
         .header-controls button:hover { color: var(--accent); transform: scale(1.1); }
 
         .main-content {
-            display: flex; gap: 20px; flex: 1; overflow: hidden;
+            display: flex; gap: 20px; flex: 1; min-height: 0;
         }
 
         /* =========================================
@@ -127,12 +128,14 @@
 
         .media-container {
             flex: 1; position: relative; border-radius: var(--border-radius);
-            overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; background: #000; display: block;
             box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            min-height: 400px; /* Guarantees the video will never be too small */
+            width: 100%;
         }
 
-        video { width: 100%; height: 100%; object-fit: contain; z-index: 1; }
-        #spotify-iframe { width: 100%; height: 100%; border: none; display: none; z-index: 2; }
+        video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; background: transparent; }
+        #embed-iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; display: none; z-index: 2; }
         
         canvas#visualizer {
             position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
@@ -323,8 +326,9 @@
            RESPONSIVE DESIGN
            ========================================= */
         @media (max-width: 1024px) {
-            .main-content { flex-direction: column; overflow-y: auto; }
-            .player-section { flex: none; height: 60vh; }
+            .main-content { flex-direction: column; overflow-y: visible; }
+            .player-section { flex: none; height: auto; }
+            .media-container { min-height: 400px; }
             .playlist-section { max-width: 100%; height: 50vh; }
         }
         @media (max-width: 600px) {
@@ -333,6 +337,7 @@
             .volume-container { width: 100%; justify-content: center; }
             .app-container { padding: 10px; }
             header { padding: 10px; }
+            .media-container { min-height: 250px; }
         }
 
         /* Mini Player Mode */
@@ -368,14 +373,14 @@
         <main class="main-content">
             
             <!-- Left: Media Player -->
-            <section class="player-section glass">
+            <div class="player-section glass">
                 <div class="media-container" id="mediaContainer">
                     <div class="poster-overlay" id="posterOverlay"></div>
                     <video id="mainMedia" crossorigin="anonymous">
                         Your browser does not support HTML5 video.
                     </video>
                     <canvas id="visualizer"></canvas>
-                    <iframe id="spotify-iframe" allow="encrypted-media"></iframe>
+                    <iframe id="embed-iframe" allow="autoplay; fullscreen; encrypted-media; picture-in-picture"></iframe>
                 </div>
 
                 <div class="controls-panel">
@@ -419,7 +424,7 @@
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
 
             <!-- Right: Playlist -->
             <section class="playlist-section glass">
@@ -534,7 +539,7 @@
 
         const DOM = {
             media: document.getElementById('mainMedia'),
-            spotify: document.getElementById('spotify-iframe'),
+            embedFrame: document.getElementById('embed-iframe'),
             visualizer: document.getElementById('visualizer'),
             playBtn: document.getElementById('btnPlay'),
             currentTime: document.getElementById('currentTime'),
@@ -558,10 +563,66 @@
         let isVisInit = false;
 
         /* =========================================
+           INDEXEDDB FOR LOCAL FILES
+           ========================================= */
+        let db;
+        const DB_NAME = 'AuraPlayerDB';
+        const STORE_NAME = 'local_files';
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                };
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve();
+                };
+                request.onerror = (event) => {
+                    console.error("IndexedDB error:", event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        async function saveFileToDB(id, file) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put({ id: id, file: file });
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function getFileFromDB(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result ? request.result.file : null);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function deleteFileFromDB(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.delete(id);
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        /* =========================================
            INITIALIZATION
            ========================================= */
-        function init() {
-            loadData();
+        async function init() {
+            await initDB();
+            await loadData();
             applySettings();
             setupEventListeners();
             setupDragAndDrop();
@@ -569,23 +630,44 @@
             if(settings.cursor) initCursor();
         }
 
-        function loadData() {
+        async function loadData() {
             const savedSettings = localStorage.getItem('aura_settings');
             if(savedSettings) settings = { ...settings, ...JSON.parse(savedSettings) };
             
-            // Load playlist but filter out blob URLs as they die on refresh
             const savedPlaylist = localStorage.getItem('aura_playlist');
             if(savedPlaylist) {
-                const raw = JSON.parse(savedPlaylist);
-                playlist = raw.filter(track => track.type !== 'local');
+                playlist = JSON.parse(savedPlaylist);
+                
+                // Reconstruct blob URLs for local files from IndexedDB
+                for (let i = 0; i < playlist.length; i++) {
+                    if (playlist[i].isLocalFile) {
+                        const file = await getFileFromDB(playlist[i].id);
+                        if (file) {
+                            playlist[i].url = URL.createObjectURL(file);
+                        } else {
+                            // If file is missing from DB, mark it so it can be handled
+                            playlist[i].error = true;
+                        }
+                    }
+                }
+                
+                // Filter out files that couldn't be loaded from DB
+                playlist = playlist.filter(t => !t.error);
             }
         }
 
         function saveData() {
             localStorage.setItem('aura_settings', JSON.stringify(settings));
-            // Only save non-local tracks
-            const safePlaylist = playlist.filter(t => t.type !== 'local');
-            localStorage.setItem('aura_playlist', JSON.stringify(safePlaylist));
+            // Save playlist metadata (but not the blob URLs themselves)
+            const playlistToSave = playlist.map(t => {
+                const trackCopy = { ...t };
+                if (trackCopy.isLocalFile) {
+                    // Don't save the blob URL, we'll recreate it on load
+                    trackCopy.url = ''; 
+                }
+                return trackCopy;
+            });
+            localStorage.setItem('aura_playlist', JSON.stringify(playlistToSave));
         }
 
         function applySettings() {
@@ -617,19 +699,26 @@
             DOM.metaTitle.innerText = track.name;
             DOM.metaArtist.innerText = track.artist || 'Aura Player';
             
-            if(track.type === 'spotify') {
+            if(['spotify', 'youtube', 'iframe'].includes(track.type)) {
                 DOM.media.style.display = 'none';
                 DOM.visualizer.style.display = 'none';
                 DOM.poster.style.display = 'none';
-                DOM.spotify.style.display = 'block';
-                DOM.spotify.src = `https://open.spotify.com/embed/${track.spotifyType}/${track.spotifyId}?utm_source=generator&theme=0`;
+                DOM.embedFrame.style.display = 'block';
+                
+                if (track.type === 'spotify') {
+                    DOM.embedFrame.src = `https://open.spotify.com/embed/${track.externalType}/${track.externalId}?utm_source=generator&theme=0`;
+                } else if (track.type === 'youtube') {
+                    DOM.embedFrame.src = `https://www.youtube.com/embed/${track.externalId}?autoplay=${settings.autoplay ? 1 : 0}`;
+                } else {
+                    DOM.embedFrame.src = track.url;
+                }
                 
                 DOM.media.pause();
                 isPlaying = false;
                 updatePlayBtn();
             } else {
-                DOM.spotify.style.display = 'none';
-                DOM.spotify.src = '';
+                DOM.embedFrame.style.display = 'none';
+                DOM.embedFrame.src = '';
                 DOM.media.style.display = 'block';
                 DOM.media.src = track.url;
                 
@@ -658,8 +747,8 @@
             const track = playlist[currentIndex];
             if(!track) return loadTrack(0);
 
-            if(track.type === 'spotify') {
-                showToast("Control Spotify via the embedded player.", "info");
+            if(['spotify', 'youtube', 'iframe'].includes(track.type)) {
+                showToast(`Control ${track.artist} via the embedded player.`, "info");
                 return;
             }
 
@@ -679,7 +768,7 @@
         }
 
         function skip(seconds) {
-            if(playlist[currentIndex]?.type === 'spotify') return;
+            if(['spotify', 'youtube', 'iframe'].includes(playlist[currentIndex]?.type)) return;
             DOM.media.currentTime += seconds;
         }
 
@@ -752,7 +841,7 @@
                 if(document.pictureInPictureElement) await document.exitPictureInPicture();
                 else await DOM.media.requestPictureInPicture();
             } else {
-                showToast('PiP is only available for videos.', 'info');
+                showToast('PiP is only available for local videos.', 'info');
             }
         }
 
@@ -771,40 +860,71 @@
         /* =========================================
            PLAYLIST MANAGEMENT
            ========================================= */
-        function handleFiles(files) {
-            Array.from(files).forEach(file => {
+        async function handleFiles(files) {
+            for (const file of Array.from(files)) {
                 const isVideo = file.type.startsWith('video');
                 const isAudio = file.type.startsWith('audio');
-                if(!isVideo && !isAudio) return showToast(`Unsupported file: ${file.name}`, 'error');
+                if(!isVideo && !isAudio) {
+                    showToast(`Unsupported file: ${file.name}`, 'error');
+                    continue;
+                }
                 
+                const id = Date.now() + Math.random().toString().substring(2, 8);
                 const url = URL.createObjectURL(file);
-                addTrack(file.name, url, isVideo ? 'video' : 'audio', 'Local File');
-            });
+                
+                // Save to IndexedDB
+                await saveFileToDB(id, file);
+                
+                const track = { 
+                    id: id, 
+                    name: file.name, 
+                    url: url, 
+                    type: isVideo ? 'video' : 'audio', 
+                    artist: 'Local File',
+                    isLocalFile: true
+                };
+                
+                playlist.push(track);
+                saveData();
+                renderPlaylist();
+                if (playlist.length === 1) loadTrack(0);
+                showToast('Added to playlist', 'success');
+            }
         }
 
         function addFromURL() {
             const url = document.getElementById('urlInput').value.trim();
             if(!url) return;
             
-            // Spotify Check
             const spotMatch = url.match(/spotify\.com\/(track|playlist|album|episode|show)\/([a-zA-Z0-9]+)/);
+            const ytMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+            
             if(spotMatch) {
                 addTrack('Spotify Stream', url, 'spotify', spotMatch[1], spotMatch[2]);
+            } else if (ytMatch) {
+                addTrack('YouTube Video', url, 'youtube', 'YouTube', ytMatch[1]);
             } else {
-                // Generic URL
-                const name = url.split('/').pop() || 'Remote Stream';
-                const type = url.match(/\.(mp4|webm|mkv)/i) ? 'video' : 'audio';
-                addTrack(name, url, type, 'Remote');
+                // Determine if direct media or fallback to iframe embedding
+                const name = url.split('/').pop() || 'Web Stream';
+                let type = 'iframe';
+                if(url.match(/\.(mp4|webm|mkv|avi|mov)$/i)) type = 'video';
+                else if(url.match(/\.(mp3|wav|ogg|flac|m4a)$/i)) type = 'audio';
+                
+                addTrack(name, url, type, 'Web Stream');
             }
             document.getElementById('urlInput').value = '';
         }
 
-        function addTrack(name, url, type, artist = 'Unknown', spotifyId = null) {
-            const track = { id: Date.now() + Math.random(), name, url, type, artist };
+        function addTrack(name, url, type, artist = 'Unknown', externalId = null) {
+            const track = { id: Date.now() + Math.random().toString().substring(2, 8), name, url, type, artist };
+            
             if(type === 'spotify') {
-                track.spotifyType = artist; // repurposed param for internal logic
-                track.spotifyId = spotifyId;
+                track.externalType = artist;
+                track.externalId = externalId;
                 track.artist = 'Spotify Web';
+            } else if (type === 'youtube') {
+                track.externalId = externalId;
+                track.artist = 'YouTube';
             }
             
             playlist.push(track);
@@ -814,13 +934,21 @@
             showToast('Added to playlist', 'success');
         }
 
-        function removeTrack(index, e) {
+        async function removeTrack(index, e) {
             e.stopPropagation();
+            const track = playlist[index];
+            
+            // If it's a local file, remove it from IndexedDB
+            if (track.isLocalFile) {
+                await deleteFileFromDB(track.id);
+                URL.revokeObjectURL(track.url); // Free memory
+            }
+
             playlist.splice(index, 1);
             if(index === currentIndex) {
                 currentIndex = -1;
                 DOM.media.src = '';
-                DOM.spotify.src = '';
+                DOM.embedFrame.src = '';
                 if(playlist.length > 0) loadTrack(0);
             } else if (index < currentIndex) {
                 currentIndex--;
@@ -829,17 +957,26 @@
             renderPlaylist();
         }
 
-        function clearPlaylist() {
+        async function clearPlaylist() {
+            // Clean up all local files from DB
+            for (const track of playlist) {
+                if (track.isLocalFile) {
+                    await deleteFileFromDB(track.id);
+                    URL.revokeObjectURL(track.url);
+                }
+            }
+
             playlist = [];
             currentIndex = -1;
             DOM.media.src = '';
+            DOM.embedFrame.src = '';
             saveData();
             renderPlaylist();
             DOM.metaTitle.innerText = "No Media Loaded";
         }
 
         function exportPlaylist() {
-            const safe = playlist.filter(t => t.type !== 'local');
+            const safe = playlist.filter(t => !t.isLocalFile);
             const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(safe));
             const a = document.createElement('a');
             a.href = data;
@@ -878,6 +1015,8 @@
                 let icon = 'fa-music';
                 if(track.type === 'video') icon = 'fa-video';
                 if(track.type === 'spotify') icon = 'fa-spotify';
+                if(track.type === 'youtube') icon = 'fa-youtube';
+                if(track.type === 'iframe') icon = 'fa-globe';
 
                 item.innerHTML = `
                     <div style="display:flex; align-items:center; gap:15px; overflow:hidden;">
@@ -927,7 +1066,7 @@
         function setupEventListeners() {
             // Media Events
             DOM.media.addEventListener('timeupdate', () => {
-                if(playlist[currentIndex]?.type === 'spotify') return;
+                if(['spotify', 'youtube', 'iframe'].includes(playlist[currentIndex]?.type)) return;
                 const progress = (DOM.media.currentTime / DOM.media.duration) * 100;
                 DOM.seekSlider.value = progress || 0;
                 DOM.progressBar.style.width = `${progress || 0}%`;
@@ -944,8 +1083,11 @@
             });
             
             DOM.media.addEventListener('error', (e) => {
-                showToast("Error loading media file.", "error");
-                if(settings.autoplay) setTimeout(nextTrack, 2000);
+                // If it's a generic stream URL that failed to load, it might be due to CORS
+                if(playlist[currentIndex]?.type === 'video' || playlist[currentIndex]?.type === 'audio') {
+                    showToast("Error playing media. URL might be restricted or invalid.", "error");
+                    if(settings.autoplay) setTimeout(nextTrack, 2500);
+                }
             });
 
             // Seek Slider
@@ -1085,8 +1227,9 @@
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         
-        function factoryReset() {
+        async function factoryReset() {
             if(confirm("Delete all playlists and settings?")) {
+                await clearPlaylist(); // Clears DB as well
                 localStorage.removeItem('aura_playlist');
                 localStorage.removeItem('aura_settings');
                 location.reload();
@@ -1103,7 +1246,7 @@
             setTimeout(() => {
                 el.style.animation = 'slideIn 0.3s ease reverse forwards';
                 setTimeout(()=>el.remove(), 300);
-            }, 3000);
+            }, 5000); // slightly longer display time for errors
         }
 
         /* =========================================
